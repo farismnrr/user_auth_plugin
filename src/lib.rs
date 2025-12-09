@@ -1,4 +1,4 @@
-//! Journify Library Crate
+//! User Auth Plugin Library Crate
 //!
 //! This library exports all core modules for testing and external integration.
 //! It provides access to entities, repositories, use cases, controllers, routes,

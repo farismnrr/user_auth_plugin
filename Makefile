@@ -1,6 +1,6 @@
 # User Auth Plugin - Makefile for Development Automation
 
-.PHONY: help dev build test clean migrate-up migrate-down migrate-fresh db-reset
+.PHONY: help dev build test clean migrate-up migrate-down migrate-fresh db-reset test-k6 test-k6-auth test-k6-users test-k6-details
 
 # Default target
 help:
@@ -13,6 +13,9 @@ help:
 	@echo "  make test             - Run all tests"
 	@echo "  make test-integration - Run integration tests (whitebox)"
 	@echo "  make test-e2e         - Run E2E tests (blackbox)"
+	@echo "  make test-e2e-auth     - Run e2e auth tests only"
+	@echo "  make test-e2e-users    - Run e2e user tests only"
+	@echo "  make test-e2e-details  - Run e2e user details tests only"
 	@echo "  make migrate-up       - Run database migrations"
 	@echo "  make migrate-down     - Rollback last migration"
 	@echo "  make migrate-fresh    - Drop all tables and re-run migrations"
@@ -53,9 +56,12 @@ test-integration:
 	cargo test --test integration_tests -- --test-threads=1
 
 # Run E2E tests only (blackbox)
+K6_CMD = docker run --rm -i --user "$(shell id -u):$(shell id -g)" --network="host" -v $(PWD):/scripts -w /scripts grafana/k6 run
+
 test-e2e:
-	@echo "🧪 Running E2E tests (blackbox)..."
-	cargo test --test e2e_tests -- --test-threads=1
+	@echo "🧪 Running all k6 E2E tests with HTML report..."
+	@$(K6_CMD) tests/e2e/k6/test-e2e.js
+	@echo "✅ All k6 tests completed. Report generated at coverage/test-e2e.html"
 
 # Run database migrations (up)
 migrate-up:
@@ -109,3 +115,30 @@ watch:
 migrate-status:
 	@echo "📊 Checking migration status..."
 	cd migration && cargo run -- status
+
+# K6 auth tests only
+test-k6-auth:
+	@echo "🧪 Running k6 auth tests..."
+	@$(K6_CMD) tests/e2e/k6/auth/register.js
+	@$(K6_CMD) tests/e2e/k6/auth/login.js
+	@$(K6_CMD) tests/e2e/k6/auth/logout.js
+	@$(K6_CMD) tests/e2e/k6/auth/refresh.js
+	@$(K6_CMD) tests/e2e/k6/auth/verify.js
+	@echo "✅ Auth tests completed"
+
+# E2E user tests only
+test-e2e-users:
+	@echo "🧪 Running e2e user tests..."
+	@$(K6_CMD) tests/e2e/k6/users/get.js
+	@$(K6_CMD) tests/e2e/k6/users/get_all.js
+	@$(K6_CMD) tests/e2e/k6/users/update.js
+	@$(K6_CMD) tests/e2e/k6/users/delete.js
+	@echo "✅ User tests completed"
+
+# E2E user details tests only
+# K6 user details tests only
+test-e2e-details:
+	@echo "🧪 Running e2e user details tests..."
+	@$(K6_CMD) tests/e2e/k6/user_details/update.js
+	@$(K6_CMD) tests/e2e/k6/user_details/upload.js
+	@echo "✅ User details tests completed"

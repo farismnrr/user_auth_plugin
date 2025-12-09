@@ -1,6 +1,6 @@
-//! Journify - User Authentication Service
+//! IoTNet - User Authentication Plugin
 //!
-//! This is the main entry point for the Journify authentication service built with Actix-web.
+//! This is the main entry point for the User Auth Plugin authentication service built with Actix-web.
 //! The application provides user management and authentication capabilities with JWT-based
 //! authentication, rate limiting, and comprehensive API endpoints.
 

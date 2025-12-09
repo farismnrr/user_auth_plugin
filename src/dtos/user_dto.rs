@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use crate::dtos::user_details_dto::UserDetailsResponse;
 
 /// Request DTO for creating a new user.
 ///
@@ -28,6 +29,7 @@ pub struct UpdateUserRequest {
 ///
 /// This DTO excludes sensitive information like password hash.
 /// Used for all user-related API responses.
+/// Includes nested `details` object containing user_details data.
 #[derive(Debug, Clone, Serialize)]
 pub struct UserResponse {
     pub id: Uuid,
@@ -36,4 +38,5 @@ pub struct UserResponse {
     pub role: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub details: Option<UserDetailsResponse>,
 }

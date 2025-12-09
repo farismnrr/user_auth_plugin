@@ -1,7 +1,6 @@
 //! API Key Authentication Middleware
 //!
-//! This middleware validates API keys from the Authorization header for protected endpoints.
-//! It supports both plain API keys and Bearer token format.
+//! This middleware validates API keys from the X-API-Key header for protected endpoints.
 
 use std::env;
 use actix_web::{
@@ -16,7 +15,7 @@ use crate::dtos::response_dto::ErrorResponseDTO;
 
 /// API key authentication middleware.
 ///
-/// This middleware checks for a valid API key in the Authorization header.
+/// This middleware checks for a valid API key in the X-API-Key header.
 /// The expected API key is read from the `API_KEY` environment variable.
 #[derive(Clone)]
 pub struct ApiKeyMiddleware;
@@ -58,20 +57,21 @@ where
         self.service.poll_ready(ctx)
     }
 
+
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let expected_key = self.api_key.clone();
         let path = req.path().to_string();
-        let has_auth_header = req.headers().get(header::AUTHORIZATION).is_some();
-        let auth_value = req
+        let has_api_key_header = req.headers().get("X-API-Key").is_some();
+        let api_key_value = req
             .headers()
-            .get(header::AUTHORIZATION)
+            .get("X-API-Key")
             .and_then(|v| v.to_str().ok())
             .map(str::trim)
             .unwrap_or("");
-        debug!("[Middleware | ApiKey] call - path='{}' auth_header_present={} auth_len={} expected_key_set={}",
-            path, has_auth_header, auth_value.len(), !expected_key.is_empty());
+        debug!("[Middleware | ApiKey] call - path='{}' x_api_key_present={} key_len={} expected_key_set={}",
+            path, has_api_key_header, api_key_value.len(), !expected_key.is_empty());
 
-        let is_valid = !expected_key.is_empty() && is_authorized(auth_value, &expected_key);
+        let is_valid = !expected_key.is_empty() && api_key_value == expected_key;
         if !is_valid {
             debug!("[Middleware | ApiKey] Unauthorized request to '{}'", path);
             let res = HttpResponse::Unauthorized()
@@ -91,29 +91,5 @@ where
             let res = fut.await?;
             Ok(res.map_into_left_body())
         })
-    }
-}
-
-/// Checks if the provided header value matches the expected API key.
-///
-/// Supports multiple formats:
-/// - Plain API key: `your-api-key`
-/// - Bearer token: `Bearer your-api-key`
-/// - Case-insensitive Bearer: `bearer your-api-key`
-fn is_authorized(header_value: &str, expected_key: &str) -> bool {
-    if header_value == expected_key {
-        return true;
-    }
-
-    if let Some(token) = header_value.strip_prefix("Bearer ")
-        .or_else(|| header_value.strip_prefix("bearer "))
-    {
-        return token.trim() == expected_key;
-    }
-
-    let mut parts = header_value.split_whitespace();
-    match (parts.next(), parts.next()) {
-        (Some(scheme), Some(token)) => scheme.eq_ignore_ascii_case("bearer") && token.trim() == expected_key,
-        _ => false,
     }
 }

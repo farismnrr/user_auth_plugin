@@ -1,7 +1,10 @@
-use crate::dtos::user_dto::{CreateUserRequest, UpdateUserRequest, UserResponse};
+use crate::dtos::user_dto::{UpdateUserRequest, UserResponse};
+use crate::dtos::user_details_dto::UserDetailsResponse;
 use crate::entities::user::Model as User;
+use crate::entities::user_details::Model as UserDetails;
 use crate::errors::AppError;
 use crate::repositories::user_repository::UserRepositoryTrait;
+use crate::repositories::user_details_repository::UserDetailsRepositoryTrait;
 use crate::validators::user_validator;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -13,6 +16,7 @@ use uuid::Uuid;
 /// to ensure data integrity and business rule compliance.
 pub struct UserUseCase {
     repository: Arc<dyn UserRepositoryTrait>,
+    user_details_repository: Arc<dyn UserDetailsRepositoryTrait>,
 }
 
 impl UserUseCase {
@@ -21,27 +25,18 @@ impl UserUseCase {
     /// # Arguments
     ///
     /// * `repository` - Arc-wrapped user repository implementation
-    pub fn new(repository: Arc<dyn UserRepositoryTrait>) -> Self {
-        Self { repository }
+    /// * `user_details_repository` - Arc-wrapped user_details repository implementation
+    pub fn new(
+        repository: Arc<dyn UserRepositoryTrait>,
+        user_details_repository: Arc<dyn UserDetailsRepositoryTrait>,
+    ) -> Self {
+        Self { 
+            repository,
+            user_details_repository,
+        }
     }
 
-    /// Create a new user
-    /// 
-    /// Note: This method is primarily used by integration tests.
-    /// For production use, prefer using AuthUseCase::register which includes
-    /// authentication token generation.
-    #[allow(dead_code)]
-    pub async fn create_user(&self, req: CreateUserRequest) -> Result<UserResponse, AppError> {
-        // Validate input
-        user_validator::validate_username(&req.username)?;
-        user_validator::validate_email(&req.email)?;
-        user_validator::validate_password(&req.password)?;
 
-        // Create user via repository
-        let user = self.repository.create(&req).await?;
-
-        Ok(Self::user_to_response(user))
-    }
 
     /// Retrieves a user by their ID.
     ///
@@ -51,7 +46,7 @@ impl UserUseCase {
     ///
     /// # Returns
     ///
-    /// Returns `UserResponse` if found, or `AppError::NotFound` if the user doesn't exist.
+    /// Returns `UserResponse` with nested user_details if found, or `AppError::NotFound` if the user doesn't exist.
     pub async fn get_user(&self, id: Uuid) -> Result<UserResponse, AppError> {
         let user = self
             .repository
@@ -59,18 +54,27 @@ impl UserUseCase {
             .await?
             .ok_or_else(|| AppError::NotFound(format!("User with id {} not found", id)))?;
 
-        Ok(Self::user_to_response(user))
+        // Fetch user_details
+        let user_details = self.user_details_repository.find_by_user_id(user.id).await?;
+
+        Ok(Self::user_to_response(user, user_details))
     }
 
     /// Retrieves all users from the database.
     ///
     /// # Returns
     ///
-    /// Returns a vector of `UserResponse` containing all users.
+    /// Returns a vector of `UserResponse` containing all users with their user_details.
     pub async fn get_all_users(&self) -> Result<Vec<UserResponse>, AppError> {
         let users = self.repository.find_all().await?;
 
-        Ok(users.into_iter().map(Self::user_to_response).collect())
+        let mut responses = Vec::new();
+        for user in users {
+            let user_details = self.user_details_repository.find_by_user_id(user.id).await?;
+            responses.push(Self::user_to_response(user, user_details));
+        }
+
+        Ok(responses)
     }
 
     /// Updates an existing user.
@@ -100,9 +104,12 @@ impl UserUseCase {
         }
 
         // Update user via repository
-        let user = self.repository.update(id, &req).await?;
+        let user = self.repository.update(id, req).await?;
 
-        Ok(Self::user_to_response(user))
+        // Fetch user_details
+        let user_details = self.user_details_repository.find_by_user_id(user.id).await?;
+
+        Ok(Self::user_to_response(user, user_details))
     }
 
     /// Deletes a user by their ID.
@@ -118,8 +125,8 @@ impl UserUseCase {
         self.repository.delete(id).await
     }
 
-    /// Converts a User entity to UserResponse DTO.
-    fn user_to_response(user: User) -> UserResponse {
+    /// Converts a User entity to UserResponse DTO with optional user_details.
+    fn user_to_response(user: User, user_details: Option<UserDetails>) -> UserResponse {
         UserResponse {
             id: user.id,
             username: user.username,
@@ -127,6 +134,17 @@ impl UserUseCase {
             role: user.role,
             created_at: user.created_at,
             updated_at: user.updated_at,
+            details: user_details.map(|details| UserDetailsResponse {
+                id: details.id,
+                user_id: details.user_id,
+                full_name: details.full_name,
+                phone_number: details.phone_number,
+                address: details.address,
+                date_of_birth: details.date_of_birth,
+                profile_picture_url: details.profile_picture_url,
+                created_at: details.created_at,
+                updated_at: details.updated_at,
+            }),
         }
     }
 }

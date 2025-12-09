@@ -60,15 +60,22 @@ pub async fn run_server() -> std::io::Result<()> {
         .map_err(|e| std::io::Error::other(format!("Postgres initialization failed: {}", e)))?;
 
     use crate::repositories::user_repository::{UserRepository, UserRepositoryTrait};
+    use crate::repositories::user_details_repository::{UserDetailsRepository, UserDetailsRepositoryTrait};
     use crate::usecases::user_usecase::UserUseCase;
     use crate::usecases::auth_usecase::AuthUseCase;
+    use crate::usecases::user_details_usecase::UserDetailsUseCase;
     use crate::routes::user_routes;
     use crate::routes::auth_routes;
 
     let user_repository = UserRepository::new(db.clone());
     let user_repository: Arc<dyn UserRepositoryTrait> = Arc::new(user_repository);
-    let user_usecase = Arc::new(UserUseCase::new(user_repository.clone()));
-    let auth_usecase = Arc::new(AuthUseCase::new(user_repository.clone()));
+    
+    let user_details_repository = UserDetailsRepository::new(db.clone());
+    let user_details_repository: Arc<dyn UserDetailsRepositoryTrait> = Arc::new(user_details_repository);
+    
+    let user_usecase = Arc::new(UserUseCase::new(user_repository.clone(), user_details_repository.clone()));
+    let auth_usecase = Arc::new(AuthUseCase::new(user_repository.clone(), user_details_repository.clone()));
+    let user_details_usecase = Arc::new(UserDetailsUseCase::new(user_details_repository.clone()));
 
     let secret_key = Arc::new(std::env::var("SECRET_KEY").unwrap_or_else(|_| {
         info!("SECRET_KEY not set; using empty string for development");
@@ -82,6 +89,7 @@ pub async fn run_server() -> std::io::Result<()> {
     let secret_for_factory = secret_key.clone();
     let user_usecase_for_factory = user_usecase.clone();
     let auth_usecase_for_factory = auth_usecase.clone();
+    let user_details_usecase_for_factory = user_details_usecase.clone();
 
     let server = HttpServer::new(move || {
         App::new()
@@ -90,19 +98,27 @@ pub async fn run_server() -> std::io::Result<()> {
 
             .app_data(web::Data::new(user_usecase_for_factory.clone()))
             .app_data(web::Data::new(auth_usecase_for_factory.clone()))
+            .app_data(web::Data::new(user_details_usecase_for_factory.clone()))
             .wrap(PoweredByMiddleware)
             .wrap(RequestLoggerMiddleware)
             .wrap(middleware::Compress::default())
 
             .route("/", web::get().to(healthcheck))
 
+            // Static files for profile pictures
+            .service(actix_files::Files::new("/assets", "assets").show_files_listing())
+
+            // API key protected routes (login, register, refresh)
             .service(
                 web::scope("/api")
                     .wrap(ApiKeyMiddleware)
                     .route("/ping", web::get().to(|| async { HttpResponse::Ok().body("pong") }))
-                    .configure(user_routes::configure_user_routes)
-                    .configure(auth_routes::configure_auth_routes)
+                    .configure(auth_routes::configure_api_key_routes)
             )
+            
+            // JWT protected routes (logout, verify, users)
+            .configure(user_routes::configure_user_routes)
+            .configure(auth_routes::configure_jwt_routes)
     })
     .bind(("0.0.0.0", 5500))?;
 

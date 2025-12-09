@@ -3,10 +3,10 @@ use crate::dtos::user_dto::UserResponse;
 
 /// Request DTO for user login.
 ///
-/// Requires email and password for authentication.
+/// Accepts either email or username for authentication.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LoginRequest {
-    pub email: String,
+    pub email_or_username: String,
     pub password: String,
 }
 

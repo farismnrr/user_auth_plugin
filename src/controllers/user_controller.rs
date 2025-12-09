@@ -1,17 +1,17 @@
 use crate::dtos::user_dto::UpdateUserRequest;
-use crate::dtos::response_dto::SuccessResponseDTO;
+use crate::dtos::response_dto::{SuccessResponseDTO, IdResponse};
 use crate::errors::AppError;
 use crate::usecases::user_usecase::UserUseCase;
-use actix_web::{web, HttpResponse, Responder};
+use crate::usecases::auth_usecase::AuthUseCase;
+use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use std::sync::Arc;
-use uuid::Uuid;
 
-/// Get user by ID
+/// Get current user (from JWT)
 pub async fn get_user(
     usecase: web::Data<Arc<UserUseCase>>,
-    path: web::Path<Uuid>,
+    req: HttpRequest,
 ) -> Result<impl Responder, AppError> {
-    let user_id = path.into_inner();
+    let user_id = AuthUseCase::extract_user_id_from_request(&req)?;
     let user = usecase.get_user(user_id).await?;
 
     Ok(HttpResponse::Ok().json(SuccessResponseDTO::new("User retrieved successfully", user)))
@@ -26,25 +26,31 @@ pub async fn get_all_users(
     Ok(HttpResponse::Ok().json(SuccessResponseDTO::new("Users retrieved successfully", users)))
 }
 
-/// Update user
+/// Update current user (from JWT)
 pub async fn update_user(
     usecase: web::Data<Arc<UserUseCase>>,
-    path: web::Path<Uuid>,
     body: web::Json<UpdateUserRequest>,
+    req: HttpRequest,
 ) -> Result<impl Responder, AppError> {
-    let user_id = path.into_inner();
-    let user = usecase.update_user(user_id, body.into_inner()).await?;
+    let user_id = AuthUseCase::extract_user_id_from_request(&req)?;
+    let updated_user = usecase.update_user(user_id, body.into_inner()).await?;
 
-    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new("User updated successfully", user)))
+    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
+        "User updated successfully",
+        IdResponse { id: updated_user.id },
+    )))
 }
 
-/// Delete user
+/// Delete current user (from JWT)
 pub async fn delete_user(
     usecase: web::Data<Arc<UserUseCase>>,
-    path: web::Path<Uuid>,
+    req: HttpRequest,
 ) -> Result<impl Responder, AppError> {
-    let user_id = path.into_inner();
+    let user_id = AuthUseCase::extract_user_id_from_request(&req)?;
     usecase.delete_user(user_id).await?;
 
-    Ok(HttpResponse::Ok().json(SuccessResponseDTO::<()>::new("User deleted successfully", ())))
+    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
+        "User deleted successfully",
+        IdResponse { id: user_id },
+    )))
 }

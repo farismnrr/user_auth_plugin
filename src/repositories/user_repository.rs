@@ -14,7 +14,7 @@ use uuid::Uuid;
 #[async_trait]
 pub trait UserRepositoryTrait: Send + Sync {
     /// Creates a new user in the database.
-    async fn create(&self, user: &CreateUserRequest) -> Result<User, AppError>;
+    async fn create(&self, user: CreateUserRequest) -> Result<User, AppError>;
     
     /// Finds a user by their ID.
     async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, AppError>;
@@ -22,11 +22,14 @@ pub trait UserRepositoryTrait: Send + Sync {
     /// Finds a user by their email address.
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, AppError>;
     
+    /// Finds a user by their username.
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError>;
+    
     /// Retrieves all users from the database.
     async fn find_all(&self) -> Result<Vec<User>, AppError>;
     
     /// Updates an existing user.
-    async fn update(&self, id: Uuid, user: &UpdateUserRequest) -> Result<User, AppError>;
+    async fn update(&self, id: Uuid, user: UpdateUserRequest) -> Result<User, AppError>;
     
     /// Deletes a user by their ID.
     async fn delete(&self, id: Uuid) -> Result<(), AppError>;
@@ -52,7 +55,7 @@ impl UserRepository {
 
 #[async_trait]
 impl UserRepositoryTrait for UserRepository {
-    async fn create(&self, req: &CreateUserRequest) -> Result<User, AppError> {
+    async fn create(&self, req: CreateUserRequest) -> Result<User, AppError> {
         let password_hash = password::hash_password(&req.password)?;
 
         let user = user::ActiveModel {
@@ -99,6 +102,16 @@ impl UserRepositoryTrait for UserRepository {
         Ok(user)
     }
 
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
+        let user = UserEntity::find()
+            .filter(user::Column::Username.eq(username))
+            .one(&*self.db)
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        Ok(user)
+    }
+
     async fn find_all(&self) -> Result<Vec<User>, AppError> {
         let users = UserEntity::find()
             .order_by_desc(user::Column::CreatedAt)
@@ -109,7 +122,7 @@ impl UserRepositoryTrait for UserRepository {
         Ok(users)
     }
 
-    async fn update(&self, id: Uuid, req: &UpdateUserRequest) -> Result<User, AppError> {
+    async fn update(&self, id: Uuid, req: UpdateUserRequest) -> Result<User, AppError> {
         let existing = self.find_by_id(id).await?;
         if existing.is_none() {
             return Err(AppError::NotFound(format!("User with id {} not found", id)));

@@ -1,4 +1,5 @@
 use serde::Serialize;
+use uuid::Uuid;
 
 /// Standard error response structure for API endpoints.
 ///
@@ -72,4 +73,12 @@ impl SuccessResponseDTO<()> {
             data: None,
         }
     }
+}
+
+/// Response containing only an ID.
+///
+/// Used for create/update operations to minimize response payload.
+#[derive(Serialize)]
+pub struct IdResponse {
+    pub id: Uuid,
 }

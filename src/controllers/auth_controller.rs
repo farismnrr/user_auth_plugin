@@ -3,7 +3,15 @@ use crate::dtos::response_dto::SuccessResponseDTO;
 use crate::errors::AppError;
 use crate::usecases::auth_usecase::AuthUseCase;
 use actix_web::{cookie::{Cookie, SameSite}, web, HttpResponse, Responder};
+use serde::Serialize;
 use std::sync::Arc;
+
+/// Register response with ID and access token
+#[derive(Serialize)]
+struct RegisterResponse {
+    id: uuid::Uuid,
+    access_token: String,
+}
 
 /// Register a new user
 pub async fn register(
@@ -12,9 +20,12 @@ pub async fn register(
 ) -> Result<impl Responder, AppError> {
     let auth_response = usecase.register(body.into_inner()).await?;
     
-    Ok(HttpResponse::Created().json(SuccessResponseDTO::new(
+    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
         "User registered successfully",
-        auth_response,
+        RegisterResponse {
+            id: auth_response.user.id,
+            access_token: auth_response.access_token,
+        },
     )))
 }
 
@@ -46,7 +57,20 @@ pub async fn login(
 }
 
 /// Logs out a user by clearing the refresh token cookie.
-pub async fn logout() -> Result<impl Responder, AppError> {
+///
+/// This endpoint requires JWT authentication to ensure only logged-in users can logout.
+/// It verifies the user exists before clearing the refresh token cookie.
+pub async fn logout(
+    usecase: web::Data<Arc<AuthUseCase>>,
+    req: actix_web::HttpRequest,
+) -> Result<impl Responder, AppError> {
+    // Extract user_id from JWT token
+    let user_id = AuthUseCase::extract_user_id_from_request(&req)?;
+    
+    // Verify user exists
+    usecase.verify_user_exists(user_id).await?;
+    
+    // Clear refresh token cookie
     let cookie = Cookie::build("refresh_token", "")
         .path("/")
         .http_only(true)
@@ -57,8 +81,36 @@ pub async fn logout() -> Result<impl Responder, AppError> {
     
     Ok(HttpResponse::Ok()
         .cookie(cookie)
-        .json(SuccessResponseDTO::<()>::new(
-            "Logout successful",
-            (),
-        )))
+        .json(SuccessResponseDTO::<()>::no_data("Logged out successfully")))
+}
+
+/// Refreshes access token using refresh token from cookie.
+///
+/// Delegates to use case for cookie extraction and token refresh logic.
+pub async fn refresh(
+    usecase: web::Data<Arc<AuthUseCase>>,
+    req: actix_web::HttpRequest,
+) -> Result<impl Responder, AppError> {
+    let new_access_token = usecase.refresh_token_from_request(&req).await?;
+
+    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
+        "Token refreshed successfully",
+        serde_json::json!({
+            "access_token": new_access_token
+        }),
+    )))
+}
+
+/// Verifies JWT token and returns user data if valid.
+///
+/// This endpoint uses JWT middleware to validate the token.
+/// It then checks if the user still exists in the database.
+pub async fn verify(
+    usecase: web::Data<Arc<AuthUseCase>>,
+    req: actix_web::HttpRequest,
+) -> Result<impl Responder, AppError> {
+    let user_id = AuthUseCase::extract_user_id_from_request(&req)?;
+    let user = usecase.verify_user_exists(user_id).await?;
+
+    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new("Token is valid", user)))
 }
