@@ -1,6 +1,8 @@
 /target
 .idea/
 queries/
-# assets/
+assets/
+logs/
+.current_log
 
 .env

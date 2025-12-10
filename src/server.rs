@@ -7,6 +7,7 @@ use actix_web::{App, HttpServer, HttpResponse, middleware, web, Responder};
 use chrono::Local;
 use std::io::Write;
 use log::info;
+use std::sync::OnceLock;
 
 use crate::middlewares::api_key::ApiKeyMiddleware;
 use crate::middlewares::powered_by::PoweredByMiddleware;
@@ -32,29 +33,93 @@ async fn healthcheck() -> impl Responder {
 /// 5. Configures HTTP server with middlewares
 /// 6. Starts health monitoring
 /// 7. Handles graceful shutdown
+
 pub async fn run_server() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
 
+    // Create logs directory if it doesn't exist
+    std::fs::create_dir_all("logs")
+        .map_err(|e| std::io::Error::other(format!("Failed to create logs directory: {}", e)))?;
+
+    // Check if there's an existing log file from a previous run (for hot reload)
+    let current_log_marker = "logs/.current_log";
+    let log_file_path = if let Ok(existing_path) = std::fs::read_to_string(current_log_marker) {
+        // Use existing log file if it exists
+        if std::path::Path::new(&existing_path).exists() {
+            existing_path.trim().to_string()
+        } else {
+            // File was deleted, create new one
+            let timestamp = Local::now().format("%Y%m%d_%H%M%S");
+            let new_path = format!("logs/{}.log", timestamp);
+            std::fs::write(current_log_marker, &new_path)?;
+            new_path
+        }
+    } else {
+        // No marker file, create new log file
+        let timestamp = Local::now().format("%Y%m%d_%H%M%S");
+        let new_path = format!("logs/{}.log", timestamp);
+        std::fs::write(current_log_marker, &new_path)?;
+        new_path
+    };
+
+    // Open log file for appending
+    let log_file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_file_path)
+        .map_err(|e| std::io::Error::other(format!("Failed to open log file: {}", e)))?;
+
+    // Custom writer that writes to both stdout and file
+    struct DualWriter {
+        file: std::sync::Mutex<std::fs::File>,
+    }
+
+    impl Write for DualWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            // Write to stdout (with colors)
+            std::io::stdout().write_all(buf)?;
+            // Write to file (colors will be included but that's okay for now)
+            self.file.lock().unwrap().write_all(buf)?;
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            std::io::stdout().flush()?;
+            self.file.lock().unwrap().flush()?;
+            Ok(())
+        }
+    }
+
+    let dual_writer = DualWriter { 
+        file: std::sync::Mutex::new(log_file)
+    };
+
+    // Initialize logger only once per process
+    static LOGGER_INIT: OnceLock<()> = OnceLock::new();
+    LOGGER_INIT.get_or_init(|| {
+        let env = env_logger::Env::new().filter_or("LOG_LEVEL", "info");
+        use ansi_term::Colour;
+        
+        env_logger::Builder::from_env(env)
+            .format(move |buf, record| {
+                let ts = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+                let level_str = match record.level() {
+                    log::Level::Error => Colour::Red.paint("ERROR"),
+                    log::Level::Warn  => Colour::Yellow.paint("WARN"),
+                    log::Level::Info  => Colour::Green.paint("INFO"),
+                    log::Level::Debug => Colour::Blue.paint("DEBUG"),
+                    log::Level::Trace => Colour::Purple.paint("TRACE"),
+                };
+
+                writeln!(buf, "[{} {}] {}", ts, level_str, record.args())
+            })
+            .format_target(false)
+            .target(env_logger::Target::Pipe(Box::new(dual_writer)))
+            .init();
+    });
+
     info!("🟢 Starting server initialization");
-
-    let env = env_logger::Env::new().filter_or("LOG_LEVEL", "info");
-    use ansi_term::Colour;
-    env_logger::Builder::from_env(env)
-        .format(move |buf, record| {
-            let ts = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-            let level_str = match record.level() {
-                log::Level::Error => Colour::Red.paint("ERROR"),
-                log::Level::Warn  => Colour::Yellow.paint("WARN"),
-                log::Level::Info  => Colour::Green.paint("INFO"),
-                log::Level::Debug => Colour::Blue.paint("DEBUG"),
-                log::Level::Trace => Colour::Purple.paint("TRACE"),
-            };
-
-            writeln!(buf, "[{} {}] {}", ts, level_str, record.args())
-        })
-        .format_target(false)
-        .init();
-    info!("🟢 Logging initialized successfully");
+    info!("📝 Logging to file: {}", log_file_path);
 
     let db = postgres_connection::initialize().await
         .map_err(|e| std::io::Error::other(format!("Postgres initialization failed: {}", e)))?;

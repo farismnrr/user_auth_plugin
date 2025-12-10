@@ -1,6 +1,6 @@
 # User Auth Plugin - Makefile for Development Automation
 
-.PHONY: help dev build test clean migrate-up migrate-down migrate-fresh db-reset test-k6 test-k6-auth test-k6-users test-k6-details kill
+.PHONY: help dev start install-watch build test test-integration test-e2e test-e2e-auth test-e2e-users test-e2e-details migrate-up migrate-down migrate-fresh db-reset clean kill
 
 # Default target
 help:
@@ -23,13 +23,6 @@ help:
 	@echo "  make clean            - Clean build artifacts"
 	@echo "  make kill             - Kill process running on PORT (from .env)"
 	@echo ""
-
-# Kill process running on port 5500 (server's default port)
-kill:
-	@echo "🔪 Killing process on port 5500..."
-	@lsof -ti:5500 | xargs kill -9 2>/dev/null || echo "✅ No process running on port 5500"
-
-
 
 # Run development server with hot reload (requires cargo-watch)
 dev:
@@ -63,70 +56,18 @@ test-integration:
 	@echo "🧪 Running integration tests (whitebox)..."
 	cargo test --test integration_tests -- --test-threads=1
 
-# Run E2E tests only (blackbox)
+# K6 command for E2E tests
 K6_CMD = docker run --rm -i --user "$(shell id -u):$(shell id -g)" --network="host" -v $(PWD):/scripts -w /scripts grafana/k6 run
 
+# Run E2E tests only (blackbox)
 test-e2e:
 	@echo "🧪 Running all k6 E2E tests with HTML report..."
 	@$(K6_CMD) tests/e2e/k6/test-e2e.js
 	@echo "✅ All k6 tests completed. Report generated at coverage/test-e2e.html"
 
-# Run database migrations (up)
-migrate-up:
-	@echo "⬆️  Running database migrations..."
-	cd migration && cargo run -- up
-	@echo "✅ Migrations completed"
-
-# Rollback last migration
-migrate-down:
-	@echo "⬇️  Rolling back last migration..."
-	cd migration && cargo run -- down
-	@echo "✅ Rollback completed"
-
-# Fresh migration (drop all and re-run)
-migrate-fresh:
-	@echo "🔄 Running fresh migrations..."
-	cd migration && cargo run -- fresh
-	@echo "✅ Fresh migrations completed"
-
-# Reset database (fresh migrations)
-db-reset: migrate-fresh
-	@echo "🗑️  Database reset completed"
-
-# Clean build artifacts
-clean:
-	@echo "🧹 Cleaning build artifacts..."
-	cargo clean
-	@echo "✅ Clean completed"
-
-# Check code without building
-check:
-	@echo "🔍 Checking code..."
-	cargo check
-
-# Format code
-fmt:
-	@echo "✨ Formatting code..."
-	cargo fmt
-
-# Run clippy linter
-lint:
-	@echo "🔎 Running clippy..."
-	cargo clippy -- -D warnings
-
-# Watch and auto-reload (requires cargo-watch)
-watch:
-	@echo "👀 Watching for changes..."
-	cargo watch -x run
-
-# Database status
-migrate-status:
-	@echo "📊 Checking migration status..."
-	cd migration && cargo run -- status
-
-# K6 auth tests only
-test-k6-auth:
-	@echo "🧪 Running k6 auth tests..."
+# E2E auth tests only
+test-e2e-auth:
+	@echo "🧪 Running e2e auth tests..."
 	@$(K6_CMD) tests/e2e/k6/auth/register.js
 	@$(K6_CMD) tests/e2e/k6/auth/login.js
 	@$(K6_CMD) tests/e2e/k6/auth/logout.js
@@ -144,9 +85,61 @@ test-e2e-users:
 	@echo "✅ User tests completed"
 
 # E2E user details tests only
-# K6 user details tests only
 test-e2e-details:
 	@echo "🧪 Running e2e user details tests..."
 	@$(K6_CMD) tests/e2e/k6/user_details/update.js
 	@$(K6_CMD) tests/e2e/k6/user_details/upload.js
 	@echo "✅ User details tests completed"
+
+# Load .env variables and construct DATABASE_URL from CORE_DB_* variables
+define load_env_and_db_url
+	export $$(grep -v '^#' .env | grep -v '^$$' | xargs); \
+	export DATABASE_URL="postgresql://$$CORE_DB_USER:$$CORE_DB_PASS@$$CORE_DB_HOST:$$CORE_DB_PORT/$$CORE_DB_NAME"
+endef
+
+# Create database if it doesn't exist
+define create_db_if_not_exists
+	$(load_env_and_db_url); \
+	docker exec postgres-sql psql -U $$CORE_DB_USER -tc "SELECT 1 FROM pg_database WHERE datname = '$$CORE_DB_NAME'" | grep -q 1 || \
+	docker exec postgres-sql psql -U $$CORE_DB_USER -c "CREATE DATABASE $$CORE_DB_NAME"
+endef
+
+# Run database migrations (up)
+migrate-up:
+	@echo "⬆️  Running database migrations..."
+	@echo "📦 Ensuring database exists..."
+	@$(create_db_if_not_exists)
+	@$(load_env_and_db_url); cd migration && cargo run -- up
+	@echo "✅ Migrations completed"
+
+# Rollback last migration
+migrate-down:
+	@echo "⬇️  Rolling back last migration..."
+	@$(load_env_and_db_url); cd migration && cargo run -- down
+	@echo "✅ Rollback completed"
+
+# Fresh migration (drop all and re-run)
+migrate-fresh:
+	@echo "🔄 Running fresh migrations..."
+	@echo "📦 Ensuring database exists..."
+	@$(create_db_if_not_exists)
+	@$(load_env_and_db_url); cd migration && cargo run -- fresh
+	@echo "✅ Fresh migrations completed"
+
+# Reset database (fresh migrations)
+db-reset: migrate-fresh
+	@echo "🗑️  Database reset completed"
+
+# Clean build artifacts
+clean:
+	@echo "🧹 Cleaning build artifacts..."
+	cargo clean
+	@echo "✅ Clean completed"
+
+# Kill process running on port 5500 (server's default port)
+kill:
+	@echo "🔪 Killing processes on port 5500..."
+	@lsof -ti:5500 | xargs -r kill -9 || echo "✅ No process running on port 5500"
+
+
+
