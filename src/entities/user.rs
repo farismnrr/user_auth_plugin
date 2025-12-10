@@ -25,6 +25,10 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_one = "super::user_details::Entity")]
     UserDetails,
+    #[sea_orm(has_many = "super::user_session::Entity")]
+    UserSessions,
+    #[sea_orm(has_many = "super::user_activity_log::Entity")]
+    UserActivityLogs,
 }
 
 impl Related<super::user_details::Entity> for Entity {

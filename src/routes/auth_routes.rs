@@ -1,4 +1,4 @@
-use crate::controllers::auth_controller::{login, logout, refresh, register, verify};
+use crate::controllers::auth_controller::{change_password, login, logout, refresh, register, verify};
 use crate::middlewares::auth;
 use actix_web::web;
 use actix_web_httpauth::middleware::HttpAuthentication;
@@ -27,6 +27,7 @@ pub fn configure_api_key_routes(cfg: &mut web::ServiceConfig) {
 ///
 /// - `POST /auth/logout` - Clear refresh token cookie (JWT auth)
 /// - `POST /auth/verify` - Verify JWT token and get user data (JWT auth)
+/// - `PUT /auth/change-password` - Change user password (JWT auth)
 ///
 /// All routes require JWT Bearer token authentication.
 pub fn configure_jwt_routes(cfg: &mut web::ServiceConfig) {
@@ -37,5 +38,6 @@ pub fn configure_jwt_routes(cfg: &mut web::ServiceConfig) {
             .wrap(jwt_auth)
             .route("/logout", web::post().to(logout))
             .route("/verify", web::post().to(verify))
+            .route("/change-password", web::put().to(change_password))
     );
 }

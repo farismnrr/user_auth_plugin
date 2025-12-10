@@ -138,7 +138,7 @@ export default function () {
     sleep(shortSleep());
 
     /**
-     * Test Case: Missing API key
+     * Test Case: Missing API key (should still work with JWT)
      * URL: {apiUrl}/auth/logout
      * Body: null
      * Auth: Bearer <valid_jwt> (Missing X-API-Key)
@@ -148,10 +148,17 @@ export default function () {
      *   "data": null
      * }
      */
-    console.log('Test 4: Missing API key');
+    console.log('Test 4: Missing API key (should still work with JWT)');
+
+    // Need to login again to get fresh refresh token cookie since Test 1 cleared it
+    const loginResponse2 = http.post(loginUrl, JSON.stringify(loginPayload), { headers });
+    const loginData2 = JSON.parse(loginResponse2.body);
+    const accessToken2 = loginData2.data.access_token;
+    sleep(shortSleep());
+
     const noApiKeyHeaders = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
+        'Authorization': `Bearer ${accessToken2}`,
     };
 
     response = http.post(logoutUrl, null, { headers: noApiKeyHeaders });

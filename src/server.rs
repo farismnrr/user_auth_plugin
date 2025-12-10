@@ -61,6 +61,8 @@ pub async fn run_server() -> std::io::Result<()> {
 
     use crate::repositories::user_repository::{UserRepository, UserRepositoryTrait};
     use crate::repositories::user_details_repository::{UserDetailsRepository, UserDetailsRepositoryTrait};
+    use crate::repositories::user_session_repository::{UserSessionRepository, UserSessionRepositoryTrait};
+    use crate::repositories::user_activity_log_repository::{UserActivityLogRepository, UserActivityLogRepositoryTrait};
     use crate::usecases::user_usecase::UserUseCase;
     use crate::usecases::auth_usecase::AuthUseCase;
     use crate::usecases::user_details_usecase::UserDetailsUseCase;
@@ -73,8 +75,19 @@ pub async fn run_server() -> std::io::Result<()> {
     let user_details_repository = UserDetailsRepository::new(db.clone());
     let user_details_repository: Arc<dyn UserDetailsRepositoryTrait> = Arc::new(user_details_repository);
     
+    let user_session_repository = UserSessionRepository::new(db.clone());
+    let user_session_repository: Arc<dyn UserSessionRepositoryTrait> = Arc::new(user_session_repository);
+    
+    let user_activity_log_repository = UserActivityLogRepository::new(db.clone());
+    let user_activity_log_repository: Arc<dyn UserActivityLogRepositoryTrait> = Arc::new(user_activity_log_repository);
+    
     let user_usecase = Arc::new(UserUseCase::new(user_repository.clone(), user_details_repository.clone()));
-    let auth_usecase = Arc::new(AuthUseCase::new(user_repository.clone(), user_details_repository.clone()));
+    let auth_usecase = Arc::new(AuthUseCase::new(
+        user_repository.clone(),
+        user_details_repository.clone(),
+        user_session_repository.clone(),
+        user_activity_log_repository.clone(),
+    ));
     let user_details_usecase = Arc::new(UserDetailsUseCase::new(user_details_repository.clone()));
 
     let secret_key = Arc::new(std::env::var("SECRET_KEY").unwrap_or_else(|_| {
