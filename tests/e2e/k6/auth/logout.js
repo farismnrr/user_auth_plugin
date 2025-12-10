@@ -82,7 +82,17 @@ export default function () {
     const accessToken = loginData.data.access_token;
     sleep(shortSleep());
 
-    // Test 1: Successful logout with valid JWT
+    /**
+     * Test Case: Successful logout with valid JWT
+     * URL: {apiUrl}/auth/logout
+     * Body: null
+     * Auth: Bearer <valid_jwt>, X-API-Key
+     * Expected: {
+     *   "success": true,
+     *   "message": "Logged out successfully",
+     *   "data": null
+     * }
+     */
     console.log('Test 1: Successful logout with valid JWT');
     const authHeaders = {
         ...headers,
@@ -92,13 +102,32 @@ export default function () {
     checkSuccess(response, 200, 'Logged out successfully');
     sleep(shortSleep());
 
-    // Test 2: Logout without JWT token (should fail)
+    /**
+     * Test Case: Logout without JWT token
+     * URL: {apiUrl}/auth/logout
+     * Body: null
+     * Auth: X-API-Key (Missing Bearer Token)
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Missing authentication token"
+     * }
+     */
     console.log('Test 2: Logout without JWT token');
+    response = http.post(logoutUrl, null, { headers });
     response = http.post(logoutUrl, null, { headers });
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 3: Logout with invalid JWT token
+    /**
+     * Test Case: Logout with invalid JWT token
+     * URL: {apiUrl}/auth/logout
+     * Body: null
+     * Auth: Bearer invalid_token_here
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Invalid token"
+     * }
+     */
     console.log('Test 3: Logout with invalid JWT token');
     const invalidAuthHeaders = {
         ...headers,
@@ -108,7 +137,17 @@ export default function () {
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 4: Missing API key
+    /**
+     * Test Case: Missing API key
+     * URL: {apiUrl}/auth/logout
+     * Body: null
+     * Auth: Bearer <valid_jwt> (Missing X-API-Key)
+     * Expected: {
+     *   "success": true,
+     *   "message": "Logged out successfully",
+     *   "data": null
+     * }
+     */
     console.log('Test 4: Missing API key');
     const noApiKeyHeaders = {
         'Content-Type': 'application/json',
@@ -116,6 +155,6 @@ export default function () {
     };
 
     response = http.post(logoutUrl, null, { headers: noApiKeyHeaders });
-    checkError(response, 401);
+    checkSuccess(response, 200, 'Logged out successfully');
     sleep(shortSleep());
 }

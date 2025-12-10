@@ -72,7 +72,7 @@ impl UserRepositoryTrait for UserRepository {
             .map_err(|e| match e {
                 DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) => {
                     if db_err.message().contains("duplicate") || db_err.message().contains("unique") {
-                        AppError::BadRequest("Username or email already exists".to_string())
+                        AppError::Conflict("Username or email already exists".to_string())
                     } else {
                         AppError::DatabaseError(db_err.to_string())
                     }
@@ -152,7 +152,7 @@ impl UserRepositoryTrait for UserRepository {
             .map_err(|e| match e {
                 DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) => {
                     if db_err.message().contains("duplicate") || db_err.message().contains("unique") {
-                        AppError::BadRequest("Username or email already exists".to_string())
+                        AppError::Conflict("Username or email already exists".to_string())
                     } else {
                         AppError::DatabaseError(db_err.to_string())
                     }

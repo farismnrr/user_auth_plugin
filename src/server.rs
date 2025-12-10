@@ -106,7 +106,21 @@ pub async fn run_server() -> std::io::Result<()> {
             .route("/", web::get().to(healthcheck))
 
             // Static files for profile pictures
-            .service(actix_files::Files::new("/assets", "assets").show_files_listing())
+            .service(
+                actix_files::Files::new("/assets", "assets")
+                    .show_files_listing()
+                    .use_etag(true)
+                    .use_last_modified(true)
+            )
+            
+            // CORS middleware for cross-origin access
+            .wrap(
+                actix_cors::Cors::default()
+                    .allow_any_origin()
+                    .allow_any_method()
+                    .allow_any_header()
+                    .max_age(3600)
+            )
 
             // API key protected routes (login, register, refresh)
             .service(

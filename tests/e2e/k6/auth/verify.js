@@ -89,7 +89,17 @@ export default function () {
     const accessToken = extractAccessToken(loginResponse);
     sleep(shortSleep());
 
-    // Test 1: Successful verification with valid JWT
+    /**
+     * Test Case: Successful verification with valid JWT
+     * URL: {apiUrl}/auth/verify
+     * Body: null
+     * Auth: Bearer <valid_jwt>
+     * Expected: {
+     *   "success": true,
+     *   "message": "Token is valid",
+     *   "data": { "id": "...", "username": "...", ... }
+     * }
+     */
     console.log('Test 1: Successful verification with valid JWT');
     const validHeaders = {
         'Content-Type': 'application/json',
@@ -100,7 +110,16 @@ export default function () {
     checkSuccess(response, 200, 'Token is valid');
     sleep(shortSleep());
 
-    // Test 2: Invalid JWT format
+    /**
+     * Test Case: Invalid JWT format
+     * URL: {apiUrl}/auth/verify
+     * Body: null
+     * Auth: Bearer invalid_token_format
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Invalid authentication token"
+     * }
+     */
     console.log('Test 2: Invalid JWT format');
     const invalidJwtHeaders = {
         'Content-Type': 'application/json',
@@ -111,7 +130,16 @@ export default function () {
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 3: Expired JWT (simulated with malformed token)
+    /**
+     * Test Case: Malformed/Expired JWT
+     * URL: {apiUrl}/auth/verify
+     * Body: null
+     * Auth: Bearer <expired_token>
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Invalid authentication token"
+     * }
+     */
     console.log('Test 3: Malformed/Expired JWT');
     const expiredJwtHeaders = {
         'Content-Type': 'application/json',
@@ -122,17 +150,35 @@ export default function () {
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 4: Missing Authorization header
+    /**
+     * Test Case: Missing Authorization header
+     * URL: {apiUrl}/auth/verify
+     * Body: null
+     * Auth: None
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Missing authentication token"
+     * }
+     */
     console.log('Test 4: Missing Authorization header');
     const noAuthHeaders = {
         'Content-Type': 'application/json',
     };
 
     response = http.post(verifyUrl, null, { headers: noAuthHeaders });
-    checkError(response, 401);
+    checkError(response, 401); // Framework returns 401 with empty body here
     sleep(shortSleep());
 
-    // Test 5: Malformed Authorization header (no Bearer)
+    /**
+     * Test Case: Malformed Authorization header
+     * URL: {apiUrl}/auth/verify
+     * Body: null
+     * Auth: <jwt_only> (Missing Bearer prefix)
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Invalid authentication token"
+     * }
+     */
     console.log('Test 5: Malformed Authorization header');
     const malformedAuthHeaders = {
         'Content-Type': 'application/json',
@@ -140,10 +186,19 @@ export default function () {
     };
 
     response = http.post(verifyUrl, null, { headers: malformedAuthHeaders });
-    checkError(response, 401);
+    checkError(response, 401); // Framework returns 401 with empty body here
     sleep(shortSleep());
 
-    // Test 6: User deleted but token still valid
+    /**
+     * Test Case: User deleted but token still valid
+     * URL: {apiUrl}/auth/verify
+     * Body: null
+     * Auth: Bearer <valid_jwt> (User Deleted)
+     * Expected (404): {
+     *   "success": false,
+     *   "message": "User not found"
+     * }
+     */
     console.log('Test 6: User deleted but token still valid');
     // First delete the user
     http.del(deleteUrl, null, { headers: validHeaders });

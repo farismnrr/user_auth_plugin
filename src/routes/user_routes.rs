@@ -2,7 +2,7 @@ use crate::controllers::user_controller::{
     delete_user, get_all_users, get_user, update_user,
 };
 use crate::controllers::user_details_controller::{
-    update_user_details, upload_profile_picture,
+    get_user_details, update_user_details, upload_profile_picture,
 };
 use crate::middlewares::auth;
 use actix_web::web;
@@ -31,6 +31,7 @@ pub fn configure_user_routes(cfg: &mut web::ServiceConfig) {
             .route("/all", web::get().to(get_all_users))  // GET /users/all
             .route("", web::put().to(update_user))        // PUT /users (current user)
             .route("", web::delete().to(delete_user))     // DELETE /users (current user)
+            .route("/details", web::get().to(get_user_details))         // GET /users/details
             .route("/details", web::put().to(update_user_details))      // PUT /users/details
             .route("/uploads", web::patch().to(upload_profile_picture)) // PATCH /users/uploads
     );

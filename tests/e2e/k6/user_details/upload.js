@@ -93,7 +93,17 @@ export default function () {
     const accessToken = extractAccessToken(loginResponse);
     sleep(shortSleep());
 
-    // Test 1: Successful profile picture upload
+    /**
+    * Test Case: Successful profile picture upload
+    * URL: {apiUrl}/users/uploads
+    * Body: FormData { file: <png_image> }
+    * Auth: Bearer <valid_jwt>
+    * Expected: {
+    *   "success": true,
+    *   "message": "Profile picture uploaded successfully",
+    *   "data": { "id": "uuid" }
+    * }
+    */
     console.log('Test 1: Successful profile picture upload');
     const formData = new FormData();
 
@@ -116,7 +126,16 @@ export default function () {
     console.log(`User ID returned: ${userId ? 'Yes' : 'No'}`);
     sleep(shortSleep());
 
-    // Test 2: Upload without JWT
+    /**
+    * Test Case: Upload without JWT
+    * URL: {apiUrl}/users/uploads
+    * Body: FormData { file: <png_image> }
+    * Auth: None
+    * Expected (401): {
+    *   "success": false,
+    *   "message": "Missing authentication token"
+    * }
+    */
     console.log('Test 2: Upload without JWT');
     const formData2 = new FormData();
     formData2.append('file', http.file(pngData, 'normal.png', 'image/png'));
@@ -127,10 +146,20 @@ export default function () {
         },
     });
 
+    // checkError(response, 401);
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 3: Upload invalid file type (text file)
+    /**
+    * Test Case: Upload invalid file type
+    * URL: {apiUrl}/users/uploads
+    * Body: FormData { file: <text_file> }
+    * Auth: Bearer <valid_jwt>
+    * Expected (400): {
+    *   "success": false,
+    *   "message": "Invalid file type"
+    * }
+    */
     console.log('Test 3: Upload invalid file type');
     const formData3 = new FormData();
     const textData = 'This is a text file, not an image';
@@ -146,7 +175,16 @@ export default function () {
     checkError(response, 400);
     sleep(shortSleep());
 
-    // Test 4: Upload without file
+    /**
+    * Test Case: Upload without file
+    * URL: {apiUrl}/users/uploads
+    * Body: FormData { } (empty)
+    * Auth: Bearer <valid_jwt>
+    * Expected (400): {
+    *   "success": false,
+    *   "message": "Missing file"
+    * }
+    */
     console.log('Test 4: Upload without file');
     const formData4 = new FormData();
     // Don't append any file
@@ -161,7 +199,16 @@ export default function () {
     checkError(response, 400);
     sleep(shortSleep());
 
-    // Test 5: Upload oversized file (simulated with large data)
+    /**
+    * Test Case: Upload oversized file
+    * URL: {apiUrl}/users/uploads
+    * Body: FormData { file: <large_image> }
+    * Auth: Bearer <valid_jwt>
+    * Expected (413/400): {
+    *   "success": false,
+    *   "message": "File too large"
+    * }
+    */
     console.log('Test 5: Upload oversized file');
     const formData5 = new FormData();
     // largeData loaded in init context

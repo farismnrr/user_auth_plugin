@@ -64,7 +64,17 @@ export { options };
 export default function () {
     const baseUrl = `${BASE_URL}/api/auth/register`;
 
-    // Test 1: Successful registration
+    /**
+     * Test Case: Successful registration
+     * URL: {apiUrl}/api/auth/register
+     * Body: { username, email, password, role: 'user' }
+     * Auth: X-API-Key
+     * Expected: {
+     *   "success": true,
+     *   "message": "User registered successfully",
+     *   "data": { "id": "...", "access_token": "..." }
+     * }
+     */
     console.log('Test 1: Successful registration');
     const validPayload = {
         username: randomUsername(),
@@ -77,7 +87,16 @@ export default function () {
     checkSuccess(response, 200, 'registered successfully');
     sleep(shortSleep());
 
-    // Test 2: Duplicate email
+    /**
+     * Test Case: Duplicate email
+     * URL: {apiUrl}/api/auth/register
+     * Body: { username: <random>, email: <existing-email>, password, role }
+     * Auth: X-API-Key
+     * Expected (409): {
+     *   "success": false,
+     *   "message": "Email already exists"
+     * }
+     */
     console.log('Test 2: Duplicate email');
     const duplicateEmailPayload = {
         username: randomUsername(),
@@ -87,10 +106,19 @@ export default function () {
     };
 
     response = http.post(baseUrl, JSON.stringify(duplicateEmailPayload), { headers });
-    checkError(response, 400, 'email');
+    checkError(response, 409, 'email');
     sleep(shortSleep());
 
-    // Test 3: Duplicate username
+    /**
+     * Test Case: Duplicate username
+     * URL: {apiUrl}/api/auth/register
+     * Body: { username: <existing-username>, email: <random>, password, role }
+     * Auth: X-API-Key
+     * Expected (409): {
+     *   "success": false,
+     *   "message": "Username already exists"
+     * }
+     */
     console.log('Test 3: Duplicate username');
     const duplicateUsernamePayload = {
         username: validPayload.username, // Same username
@@ -100,10 +128,19 @@ export default function () {
     };
 
     response = http.post(baseUrl, JSON.stringify(duplicateUsernamePayload), { headers });
-    checkError(response, 400, 'username');
+    checkError(response, 409, 'username');
     sleep(shortSleep());
 
-    // Test 4: Invalid email format
+    /**
+     * Test Case: Invalid email format
+     * URL: {apiUrl}/api/auth/register
+     * Body: { email: 'invalid-email', ... }
+     * Auth: X-API-Key
+     * Expected (422): {
+     *   "success": false,
+     *   "message": "Invalid email format"
+     * }
+     */
     console.log('Test 4: Invalid email format');
     const invalidEmailPayload = {
         username: randomUsername(),
@@ -116,7 +153,16 @@ export default function () {
     checkError(response, 422);
     sleep(shortSleep());
 
-    // Test 5: Missing required fields
+    /**
+     * Test Case: Missing required fields
+     * URL: {apiUrl}/api/auth/register
+     * Body: { ... } (missing email)
+     * Auth: X-API-Key
+     * Expected (400): {
+     *   "success": false,
+     *   "message": "Missing required fields"
+     * }
+     */
     console.log('Test 5: Missing required fields (no email)');
     const missingFieldPayload = {
         username: randomUsername(),
@@ -128,7 +174,16 @@ export default function () {
     checkError(response, 400);
     sleep(shortSleep());
 
-    // Test 6: Weak password (too short)
+    /**
+     * Test Case: Weak password
+     * URL: {apiUrl}/api/auth/register
+     * Body: { password: '123', ... }
+     * Auth: X-API-Key
+     * Expected (422): {
+     *   "success": false,
+     *   "message": "Password too short"
+     * }
+     */
     console.log('Test 6: Weak password');
     const weakPasswordPayload = {
         username: randomUsername(),
@@ -141,7 +196,16 @@ export default function () {
     checkError(response, 422);
     sleep(shortSleep());
 
-    // Test 7: Missing API key
+    /**
+     * Test Case: Missing API key
+     * URL: {apiUrl}/api/auth/register
+     * Body: { ... } (valid payload)
+     * Auth: None (Headers missing X-API-Key)
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Missing API Key"
+     * }
+     */
     console.log('Test 7: Missing API key');
     const noApiKeyHeaders = {
         'Content-Type': 'application/json',

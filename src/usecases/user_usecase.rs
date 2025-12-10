@@ -126,7 +126,10 @@ impl UserUseCase {
     }
 
     /// Converts a User entity to UserResponse DTO with optional user_details.
+    /// Converts relative profile picture paths to full URLs.
     fn user_to_response(user: User, user_details: Option<UserDetails>) -> UserResponse {
+        use crate::utils::url_helper::to_full_url;
+        
         UserResponse {
             id: user.id,
             username: user.username,
@@ -134,16 +137,18 @@ impl UserUseCase {
             role: user.role,
             created_at: user.created_at,
             updated_at: user.updated_at,
-            details: user_details.map(|details| UserDetailsResponse {
-                id: details.id,
-                user_id: details.user_id,
-                full_name: details.full_name,
-                phone_number: details.phone_number,
-                address: details.address,
-                date_of_birth: details.date_of_birth,
-                profile_picture_url: details.profile_picture_url,
-                created_at: details.created_at,
-                updated_at: details.updated_at,
+            details: user_details.map(|details| {
+                UserDetailsResponse {
+                    id: details.id,
+                    user_id: details.user_id,
+                    full_name: details.full_name,
+                    phone_number: details.phone_number,
+                    address: details.address,
+                    date_of_birth: details.date_of_birth,
+                    profile_picture_url: to_full_url(details.profile_picture_url),
+                    created_at: details.created_at,
+                    updated_at: details.updated_at,
+                }
             }),
         }
     }

@@ -1,27 +1,35 @@
 # User Auth Plugin - Makefile for Development Automation
 
-.PHONY: help dev build test clean migrate-up migrate-down migrate-fresh db-reset test-k6 test-k6-auth test-k6-users test-k6-details
+.PHONY: help dev build test clean migrate-up migrate-down migrate-fresh db-reset test-k6 test-k6-auth test-k6-users test-k6-details kill
 
 # Default target
 help:
 	@echo "User Auth Plugin - Available Commands:"
 	@echo ""
 	@echo "  make dev              - Run development server with hot reload"
-	@echo "  make start    - Run development server without hot reload"
+	@echo "  make start            - Run development server without hot reload"
 	@echo "  make install-watch    - Install cargo-watch for hot reload"
 	@echo "  make build            - Build release binary"
 	@echo "  make test             - Run all tests"
 	@echo "  make test-integration - Run integration tests (whitebox)"
 	@echo "  make test-e2e         - Run E2E tests (blackbox)"
-	@echo "  make test-e2e-auth     - Run e2e auth tests only"
-	@echo "  make test-e2e-users    - Run e2e user tests only"
-	@echo "  make test-e2e-details  - Run e2e user details tests only"
+	@echo "  make test-e2e-auth    - Run e2e auth tests only"
+	@echo "  make test-e2e-users   - Run e2e user tests only"
+	@echo "  make test-e2e-details - Run e2e user details tests only"
 	@echo "  make migrate-up       - Run database migrations"
 	@echo "  make migrate-down     - Rollback last migration"
 	@echo "  make migrate-fresh    - Drop all tables and re-run migrations"
 	@echo "  make db-reset         - Reset database (fresh + seed if available)"
 	@echo "  make clean            - Clean build artifacts"
+	@echo "  make kill             - Kill process running on PORT (from .env)"
 	@echo ""
+
+# Kill process running on port 5500 (server's default port)
+kill:
+	@echo "🔪 Killing process on port 5500..."
+	@lsof -ti:5500 | xargs kill -9 2>/dev/null || echo "✅ No process running on port 5500"
+
+
 
 # Run development server with hot reload (requires cargo-watch)
 dev:

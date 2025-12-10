@@ -43,3 +43,17 @@ pub async fn upload_profile_picture(
         IdResponse { id: user_details.id },
     )))
 }
+
+/// Get current user's details (from JWT)
+pub async fn get_user_details(
+    usecase: web::Data<Arc<UserDetailsUseCase>>,
+    req: HttpRequest,
+) -> Result<impl Responder, AppError> {
+    let user_id = AuthUseCase::extract_user_id_from_request(&req)?;
+    let user_details = usecase.get_user_details(user_id).await?;
+
+    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
+        "User details retrieved successfully",
+        user_details,
+    )))
+}

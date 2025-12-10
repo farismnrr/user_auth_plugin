@@ -51,6 +51,25 @@ impl UserDetailsUseCase {
         Ok(Self::to_response(user_details))
     }
 
+    /// Get user details by user_id.
+    ///
+    /// # Arguments
+    ///
+    /// * `user_id` - UUID of the user whose details to retrieve
+    ///
+    /// # Returns
+    ///
+    /// Returns `UserDetailsResponse` or `AppError` if user_details not found.
+    pub async fn get_user_details(
+        &self,
+        user_id: Uuid,
+    ) -> Result<UserDetailsResponse, AppError> {
+        let user_details = self.repository.find_by_user_id(user_id).await?
+            .ok_or_else(|| AppError::NotFound(format!("User details not found for user {}", user_id)))?;
+        
+        Ok(Self::to_response(user_details))
+    }
+
     /// Updates profile picture.
     ///
     /// # Arguments
@@ -104,8 +123,18 @@ impl UserDetailsUseCase {
             file.write_all(&file_data)
                 .map_err(|e| AppError::InternalError(format!("Failed to write file: {}", e)))?;
 
+            // Set file permissions to 644 (readable by all, writable by owner)
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let permissions = std::fs::Permissions::from_mode(0o644);
+                std::fs::set_permissions(&filepath, permissions)
+                    .map_err(|e| AppError::InternalError(format!("Failed to set file permissions: {}", e)))?;
+            }
+
             // Update profile picture URL in database
             let profile_picture_url = format!("/{}", filepath);
+            log::info!("Profile picture uploaded successfully: {} for user {}", profile_picture_url, user_id);
             let user_details = self.repository.update_profile_picture(user_id, profile_picture_url).await?;
 
             return Ok(Self::to_response(user_details));
@@ -115,7 +144,10 @@ impl UserDetailsUseCase {
     }
 
     /// Converts UserDetails entity to UserDetailsResponse DTO.
+    /// Converts relative profile picture paths to full URLs.
     fn to_response(user_details: UserDetails) -> UserDetailsResponse {
+        use crate::utils::url_helper::to_full_url;
+
         UserDetailsResponse {
             id: user_details.id,
             user_id: user_details.user_id,
@@ -123,7 +155,7 @@ impl UserDetailsUseCase {
             phone_number: user_details.phone_number,
             address: user_details.address,
             date_of_birth: user_details.date_of_birth,
-            profile_picture_url: user_details.profile_picture_url,
+            profile_picture_url: to_full_url(user_details.profile_picture_url),
             created_at: user_details.created_at,
             updated_at: user_details.updated_at,
         }

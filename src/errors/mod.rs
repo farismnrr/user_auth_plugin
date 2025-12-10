@@ -19,6 +19,7 @@ pub enum AppError {
     InternalError(String),
     ValidationError(String),
     DatabaseError(String),
+    Conflict(String),
 }
 
 impl fmt::Display for AppError {
@@ -30,6 +31,7 @@ impl fmt::Display for AppError {
             AppError::InternalError(msg) => write!(f, "Internal Error: {}", msg),
             AppError::ValidationError(msg) => write!(f, "Validation Error: {}", msg),
             AppError::DatabaseError(msg) => write!(f, "Database Error: {}", msg),
+            AppError::Conflict(msg) => write!(f, "Conflict: {}", msg),
         }
     }
 }
@@ -52,6 +54,7 @@ impl ResponseError for AppError {
             AppError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AppError::ValidationError(_) => StatusCode::UNPROCESSABLE_ENTITY,
             AppError::DatabaseError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::Conflict(_) => StatusCode::CONFLICT,
         }
     }
 

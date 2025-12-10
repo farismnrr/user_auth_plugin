@@ -78,13 +78,25 @@ export default function () {
     };
 
     const loginResponse = http.post(loginUrl, JSON.stringify(loginPayload), { headers });
+    checkSuccess(loginResponse, 200, 'Login successful');
     const refreshToken = extractRefreshToken(loginResponse);
+    console.log(`Setup: Login status ${loginResponse.status}, Refresh token found: ${refreshToken ? 'Yes' : 'No'}`);
     sleep(shortSleep());
 
-    // Test 1: Successful token refresh with valid refresh token
+    /**
+    * Test Case: Successful token refresh
+    * URL: {apiUrl}/api/auth/refresh
+    * Body: null
+    * Auth: Cookie: refresh_token=<valid_token>
+    * Expected: {
+    *   "success": true,
+    *   "message": "Token refreshed successfully",
+    *   "data": { "access_token": "..." }
+    * }
+    */
     console.log('Test 1: Successful token refresh');
     const refreshHeaders = {
-        'Content-Type': 'application/json',
+        ...headers,
         'Cookie': `refresh_token=${refreshToken}`,
     };
 
@@ -95,10 +107,19 @@ export default function () {
     console.log(`New access token received: ${newAccessToken ? 'Yes' : 'No'}`);
     sleep(shortSleep());
 
-    // Test 2: Refresh with invalid token
+    /**
+     * Test Case: Refresh with invalid token
+     * URL: {apiUrl}/api/auth/refresh
+     * Body: null
+     * Auth: Cookie: refresh_token=invalid_token_here
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Invalid refresh token"
+     * }
+     */
     console.log('Test 2: Refresh with invalid token');
     const invalidTokenHeaders = {
-        'Content-Type': 'application/json',
+        ...headers,
         'Cookie': 'refresh_token=invalid_token_here',
     };
 
@@ -106,20 +127,43 @@ export default function () {
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 3: Refresh without token cookie
+    /**
+     * Test Case: Refresh without token cookie
+     * URL: {apiUrl}/api/auth/refresh
+     * Body: null
+     * Auth: None (Missing cookie)
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Missing refresh token"
+     * }
+     */
     console.log('Test 3: Refresh without token cookie');
+    // Clear cookies to ensure no refresh_token is sent
+    const jar = http.cookieJar();
+    jar.set(refreshUrl, 'refresh_token', 'deleted', { max_age: 0 }); // Attempt to expire it
+    jar.clear(BASE_URL); // Clear by base URL
+
     const noTokenHeaders = {
-        'Content-Type': 'application/json',
+        ...headers,
     };
 
     response = http.post(refreshUrl, null, { headers: noTokenHeaders });
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 4: Refresh with expired token (simulated with malformed token)
+    /**
+     * Test Case: Refresh with malformed/expired token
+     * URL: {apiUrl}/api/auth/refresh
+     * Body: null
+     * Auth: Cookie: refresh_token=<expired_token>
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Invalid refresh token"
+     * }
+     */
     console.log('Test 4: Refresh with malformed/expired token');
     const expiredTokenHeaders = {
-        'Content-Type': 'application/json',
+        ...headers,
         'Cookie': 'refresh_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.expired.token',
     };
 

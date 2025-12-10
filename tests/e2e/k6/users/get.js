@@ -97,7 +97,17 @@ export default function () {
     const accessToken = extractAccessToken(loginResponse);
     sleep(shortSleep());
 
-    // Test 1: Get current user with valid JWT
+    /**
+     * Test Case: Get current user with valid JWT
+     * URL: {apiUrl}/users
+     * Body: null
+     * Auth: Bearer <valid_jwt>
+     * Expected: {
+     *   "success": true,
+     *   "message": "User retrieved successfully",
+     *   "data": { "id": "...", "username": "...", ... }
+     * }
+     */
     console.log('Test 1: Get current user with valid JWT');
     const validHeaders = {
         'Content-Type': 'application/json',
@@ -113,17 +123,36 @@ export default function () {
     console.log(`User username matches: ${body.data.username === testUser.username ? 'Yes' : 'No'}`);
     sleep(shortSleep());
 
-    // Test 2: Get without JWT
+    /**
+     * Test Case: Get without JWT
+     * URL: {apiUrl}/users
+     * Body: null
+     * Auth: None
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Missing authentication token"
+     * }
+     */
     console.log('Test 2: Get without JWT');
     const noAuthHeaders = {
         'Content-Type': 'application/json',
     };
 
     response = http.get(getUserUrl, { headers: noAuthHeaders });
+    response = http.get(getUserUrl, { headers: noAuthHeaders });
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 3: Get with invalid JWT
+    /**
+     * Test Case: Get with invalid JWT
+     * URL: {apiUrl}/users
+     * Body: null
+     * Auth: Bearer invalid_token_here
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Invalid token"
+     * }
+     */
     console.log('Test 3: Get with invalid JWT');
     const invalidJwtHeaders = {
         'Content-Type': 'application/json',
@@ -134,7 +163,16 @@ export default function () {
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 4: Get with expired/malformed JWT
+    /**
+     * Test Case: Get with malformed JWT
+     * URL: {apiUrl}/users
+     * Body: null
+     * Auth: Bearer <malformed_token>
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Invalid token"
+     * }
+     */
     console.log('Test 4: Get with malformed JWT');
     const malformedJwtHeaders = {
         'Content-Type': 'application/json',

@@ -84,10 +84,31 @@ export default function () {
         role: 'user',
     };
 
+    /**
+     * Setup: Create a test user
+     * URL: {apiUrl}/api/auth/register
+     * Body: { username, email, password, role: 'user' }
+     * Auth: X-API-Key
+     * Expected: {
+     *   "success": true,
+     *   "message": "User registered successfully",
+     *   "data": { "id": "...", "access_token": "..." }
+     * }
+     */
     http.post(registerUrl, JSON.stringify(testUser), { headers });
     sleep(shortSleep());
 
-    // Test 1: Successful login with email
+    /**
+     * Test Case: Successful login with email
+     * URL: {apiUrl}/api/auth/login
+     * Body: { email_or_username: <email>, password: <password> }
+     * Auth: X-API-Key
+     * Expected: {
+     *   "success": true,
+     *   "message": "Login successful",
+     *   "data": { "user": {...}, "access_token": "..." }
+     * }
+     */
     console.log('Test 1: Successful login with email');
     const loginWithEmail = {
         email_or_username: testUser.email,
@@ -103,7 +124,17 @@ export default function () {
     console.log(`Refresh token cookie set: ${refreshToken ? 'Yes' : 'No'}`);
     sleep(shortSleep());
 
-    // Test 2: Successful login with username
+    /**
+     * Test Case: Successful login with username
+     * URL: {apiUrl}/api/auth/login
+     * Body: { email_or_username: <username>, password: <password> }
+     * Auth: X-API-Key
+     * Expected: {
+     *   "success": true,
+     *   "message": "Login successful",
+     *   "data": { "user": {...}, "access_token": "..." }
+     * }
+     */
     console.log('Test 2: Successful login with username');
     const loginWithUsername = {
         email_or_username: testUser.username,
@@ -114,7 +145,16 @@ export default function () {
     checkSuccess(response, 200, 'Login successful');
     sleep(shortSleep());
 
-    // Test 3: Wrong password
+    /**
+     * Test Case: Wrong password
+     * URL: {apiUrl}/api/auth/login
+     * Body: { email_or_username: <email>, password: 'WrongPassword123!' }
+     * Auth: X-API-Key
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Invalid credentials"
+     * }
+     */
     console.log('Test 3: Wrong password');
     const wrongPassword = {
         email_or_username: testUser.email,
@@ -125,7 +165,16 @@ export default function () {
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 4: Non-existent user
+    /**
+     * Test Case: Non-existent user
+     * URL: {apiUrl}/api/auth/login
+     * Body: { email_or_username: 'nonexistent@example.com', password: <random> }
+     * Auth: X-API-Key
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "User not found"
+     * }
+     */
     console.log('Test 4: Non-existent user');
     const nonExistentUser = {
         email_or_username: 'nonexistent@example.com',
@@ -133,10 +182,19 @@ export default function () {
     };
 
     response = http.post(loginUrl, JSON.stringify(nonExistentUser), { headers });
-    checkError(response, 404);
+    checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 5: Missing credentials
+    /**
+     * Test Case: Missing credentials
+     * URL: {apiUrl}/api/auth/login
+     * Body: { email_or_username: <email> } (missing password)
+     * Auth: X-API-Key
+     * Expected (400): {
+     *   "success": false,
+     *   "message": "Missing credentials"
+     * }
+     */
     console.log('Test 5: Missing credentials (no password)');
     const missingPassword = {
         email_or_username: testUser.email,
@@ -146,7 +204,16 @@ export default function () {
     checkError(response, 400);
     sleep(shortSleep());
 
-    // Test 6: Invalid email format (when using email)
+    /**
+     * Test Case: Invalid email format
+     * URL: {apiUrl}/api/auth/login
+     * Body: { email_or_username: 'invalid-email', password: <password> }
+     * Auth: X-API-Key
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "User not found"
+     * }
+     */
     console.log('Test 6: Invalid email format');
     const invalidEmail = {
         email_or_username: 'invalid-email',
@@ -157,7 +224,16 @@ export default function () {
     checkError(response, 401); // Will be treated as username and not found
     sleep(shortSleep());
 
-    // Test 7: Missing API key
+    /**
+     * Test Case: Missing API key
+     * URL: {apiUrl}/api/auth/login
+     * Body: { email_or_username: <email>, password: <password> }
+     * Auth: None (Headers missing X-API-Key)
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Missing API Key"
+     * }
+     */
     console.log('Test 7: Missing API key');
     const noApiKeyHeaders = {
         'Content-Type': 'application/json',

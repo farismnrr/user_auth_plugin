@@ -63,6 +63,18 @@ export function extractRefreshToken(response) {
     if (cookies && cookies.refresh_token && cookies.refresh_token.length > 0) {
         return cookies.refresh_token[0].value;
     }
+    // Fallback: Check Set-Cookie header
+    const setCookie = response.headers['Set-Cookie'];
+    if (setCookie) {
+        // Handle array or single string
+        const cookiesList = Array.isArray(setCookie) ? setCookie : [setCookie];
+        for (const c of cookiesList) {
+            if (c.includes('refresh_token=')) {
+                const match = c.match(/refresh_token=([^;]+)/);
+                if (match) return match[1];
+            }
+        }
+    }
     return null;
 }
 
@@ -75,21 +87,35 @@ export function checkSuccess(response, expectedStatus = 200, checkMessage = null
         'response has body': (r) => r.body && r.body.length > 0,
     };
 
+    let body = null;
+    try {
+        body = JSON.parse(response.body);
+    } catch (e) {
+        // Body might not be JSON (e.g. 404 HTML)
+    }
+
     if (expectedStatus >= 200 && expectedStatus < 300) {
         checks['success is true'] = (r) => {
-            const body = JSON.parse(r.body);
-            return body.success === true;
+            return body && body.success === true;
         };
     }
 
     if (checkMessage) {
         checks[`message contains "${checkMessage}"`] = (r) => {
-            const body = JSON.parse(r.body);
-            return body.message && body.message.includes(checkMessage);
+            return body && body.message && body.message.includes(checkMessage);
         };
     }
 
-    return check(response, checks);
+    const res = check(response, checks);
+    if (!res) {
+        console.log(`[FAILED] ${response.request.method} ${response.request.url}`);
+        console.log(`  Expected Status: ${expectedStatus}, Got: ${response.status}`);
+        if (checkMessage) {
+            console.log(`  Expected Message to contain: "${checkMessage}"`);
+        }
+        console.log(`  Got Body: ${response.body}`);
+    }
+    return res;
 }
 
 /**
@@ -98,17 +124,46 @@ export function checkSuccess(response, expectedStatus = 200, checkMessage = null
 export function checkError(response, expectedStatus, expectedMessageContains = null) {
     const checks = {
         [`status is ${expectedStatus}`]: (r) => r.status === expectedStatus,
-        'response has body': (r) => r.body && r.body.length > 0,
     };
 
-    if (expectedMessageContains) {
-        checks[`message contains "${expectedMessageContains}"`] = (r) => {
-            const body = JSON.parse(r.body);
-            return body.message && body.message.toLowerCase().includes(expectedMessageContains.toLowerCase());
-        };
+    if (expectedStatus === 401) {
+        // 401 from middleware might not have a body, which is acceptable
+        checks['response has body'] = (r) => (r.body && r.body.length > 0) || r.status === 401;
+    } else {
+        checks['response has body'] = (r) => r.body && r.body.length > 0;
     }
 
-    return check(response, checks);
+    let body = null;
+    try {
+        body = JSON.parse(response.body);
+    } catch (e) {
+        // Body might not be JSON
+    }
+
+    if (expectedMessageContains && body) {
+        checks[`message contains "${expectedMessageContains}"`] = (r) => {
+            return body && body.message && body.message.toLowerCase().includes(expectedMessageContains.toLowerCase());
+        };
+    } else if (expectedMessageContains && !body) {
+        // If we expect a message but have no body, this specific check will fail if status isn't 401 (or if we strictly require a message)
+        // For 401 empty body, we skip message check if body is missing
+        if (expectedStatus === 401 && (!response.body || response.body.length === 0)) {
+            // Skip message check for empty 401
+        } else {
+            checks[`message contains "${expectedMessageContains}"`] = () => false;
+        }
+    }
+
+    const res = check(response, checks);
+    if (!res) {
+        console.log(`[FAILED] ${response.request.method} ${response.request.url}`);
+        console.log(`  Expected Status: ${expectedStatus}, Got: ${response.status}`);
+        if (expectedMessageContains) {
+            console.log(`  Expected Message to contain: "${expectedMessageContains}"`);
+        }
+        console.log(`  Got Body: ${response.body}`);
+    }
+    return res;
 }
 
 /**

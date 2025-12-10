@@ -94,7 +94,17 @@ export default function () {
     const accessToken = extractAccessToken(loginResponse);
     sleep(shortSleep());
 
-    // Test 1: Get all users with valid JWT
+    /**
+    * Test Case: Get all users with valid JWT
+    * URL: {apiUrl}/users/all
+    * Body: null
+    * Auth: Bearer <valid_jwt>
+    * Expected: {
+    *   "success": true,
+    *   "message": "Users retrieved successfully",
+    *   "data": [ { "id": "...", ... }, ... ]
+    * }
+    */
     console.log('Test 1: Get all users with valid JWT');
     const validHeaders = {
         'Content-Type': 'application/json',
@@ -120,17 +130,36 @@ export default function () {
     console.log(`Total users returned: ${body.data.length}`);
     sleep(shortSleep());
 
-    // Test 2: Get all without JWT
+    /**
+     * Test Case: Get all without JWT
+     * URL: {apiUrl}/users/all
+     * Body: null
+     * Auth: None
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Missing authentication token"
+     * }
+     */
     console.log('Test 2: Get all without JWT');
     const noAuthHeaders = {
         'Content-Type': 'application/json',
     };
 
     response = http.get(getAllUsersUrl, { headers: noAuthHeaders });
+    response = http.get(getAllUsersUrl, { headers: noAuthHeaders });
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 3: Get all with invalid JWT
+    /**
+     * Test Case: Get all with invalid JWT
+     * URL: {apiUrl}/users/all
+     * Body: null
+     * Auth: Bearer invalid_token_here
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Invalid token"
+     * }
+     */
     console.log('Test 3: Get all with invalid JWT');
     const invalidJwtHeaders = {
         'Content-Type': 'application/json',

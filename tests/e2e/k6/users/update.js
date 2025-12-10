@@ -109,7 +109,17 @@ export default function () {
         'Authorization': `Bearer ${accessToken}`,
     };
 
-    // Test 1: Successful update with valid data
+    /**
+     * Test Case: Successful update with valid data
+     * URL: {apiUrl}/users
+     * Body: { username, email }
+     * Auth: Bearer <valid_jwt>
+     * Expected: {
+     *   "success": true,
+     *   "message": "User updated successfully",
+     *   "data": { "id": "uuid" }
+     * }
+     */
     console.log('Test 1: Successful update with valid data');
     const updatePayload = {
         username: randomUsername(),
@@ -123,7 +133,17 @@ export default function () {
     console.log(`User ID returned: ${userId ? 'Yes' : 'No'}`);
     sleep(shortSleep());
 
-    // Test 2: Partial update (only some fields)
+    /**
+     * Test Case: Partial update
+     * URL: {apiUrl}/users
+     * Body: { username }
+     * Auth: Bearer <valid_jwt>
+     * Expected: {
+     *   "success": true,
+     *   "message": "User updated successfully",
+     *   "data": { "id": "uuid" }
+     * }
+     */
     console.log('Test 2: Partial update (only username)');
     const partialUpdate = {
         username: randomUsername(),
@@ -133,7 +153,16 @@ export default function () {
     checkSuccess(response, 200);
     sleep(shortSleep());
 
-    // Test 3: Update with duplicate email
+    /**
+     * Test Case: Update with duplicate email
+     * URL: {apiUrl}/users
+     * Body: { email: <existing_email> }
+     * Auth: Bearer <valid_jwt>
+     * Expected (409): {
+     *   "success": false,
+     *   "message": "Email already exists"
+     * }
+     */
     console.log('Test 3: Update with duplicate email');
     const duplicateEmailUpdate = {
         email: testUser2.email, // Email from second user
@@ -143,7 +172,16 @@ export default function () {
     checkError(response, 409, 'email');
     sleep(shortSleep());
 
-    // Test 4: Update with duplicate username
+    /**
+     * Test Case: Update with duplicate username
+     * URL: {apiUrl}/users
+     * Body: { username: <existing_username> }
+     * Auth: Bearer <valid_jwt>
+     * Expected (409): {
+     *   "success": false,
+     *   "message": "Username already exists"
+     * }
+     */
     console.log('Test 4: Update with duplicate username');
     const duplicateUsernameUpdate = {
         username: testUser2.username, // Username from second user
@@ -153,7 +191,16 @@ export default function () {
     checkError(response, 409, 'username');
     sleep(shortSleep());
 
-    // Test 5: Update without JWT
+    /**
+     * Test Case: Update without JWT
+     * URL: {apiUrl}/users
+     * Body: { username, email }
+     * Auth: None
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Missing authentication token"
+     * }
+     */
     console.log('Test 5: Update without JWT');
     const noAuthHeaders = {
         'Content-Type': 'application/json',
@@ -163,23 +210,41 @@ export default function () {
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 6: Update with invalid email format
+    /**
+     * Test Case: Update with invalid email format
+     * URL: {apiUrl}/users
+     * Body: { email: 'invalid-email-format' }
+     * Auth: Bearer <valid_jwt>
+     * Expected (422): {
+     *   "success": false,
+     *   "message": "Invalid email format"
+     * }
+     */
     console.log('Test 6: Update with invalid email format');
     const invalidEmailUpdate = {
         email: 'invalid-email-format',
     };
 
     response = http.put(updateUserUrl, JSON.stringify(invalidEmailUpdate), { headers: validHeaders });
-    checkError(response, 400);
+    checkError(response, 422);
     sleep(shortSleep());
 
-    // Test 7: Update with invalid data types
+    /**
+     * Test Case: Update with invalid data types
+     * URL: {apiUrl}/users
+     * Body: { username: <integer> } (should be string)
+     * Auth: Bearer <valid_jwt>
+     * Expected (422): {
+     *   "success": false,
+     *   "message": "Invalid data type"
+     * }
+     */
     console.log('Test 7: Update with invalid data types');
     const invalidDataUpdate = {
         username: 12345, // Should be string
     };
 
     response = http.put(updateUserUrl, JSON.stringify(invalidDataUpdate), { headers: validHeaders });
-    checkError(response, 400);
+    checkError(response, 400); // Json deserialize error is 400
     sleep(shortSleep());
 }

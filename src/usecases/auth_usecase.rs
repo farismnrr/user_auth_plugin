@@ -63,7 +63,7 @@ impl AuthUseCase {
 
         // Check if email already exists
         if self.repository.find_by_email(&req.email).await?.is_some() {
-            return Err(AppError::BadRequest("Email already registered".to_string()));
+            return Err(AppError::Conflict("Email already registered".to_string()));
         }
 
         // Create user via repository

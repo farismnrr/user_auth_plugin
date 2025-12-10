@@ -100,7 +100,17 @@ export default function () {
         'Authorization': `Bearer ${accessToken}`,
     };
 
-    // Test 1: Successful update with valid data
+    /**
+    * Test Case: Successful update with valid data
+    * URL: {apiUrl}/users/details
+    * Body: { full_name, phone_number, address, date_of_birth }
+    * Auth: Bearer <valid_jwt>
+    * Expected: {
+    *   "success": true,
+    *   "message": "User details updated successfully",
+    *   "data": { "id": "uuid" }
+    * }
+    */
     console.log('Test 1: Successful update with valid data');
     const updatePayload = {
         full_name: 'John Doe',
@@ -116,7 +126,17 @@ export default function () {
     console.log(`User ID returned: ${userId ? 'Yes' : 'No'}`);
     sleep(shortSleep());
 
-    // Test 2: Partial update (only some fields)
+    /**
+    * Test Case: Partial update
+    * URL: {apiUrl}/users/details
+    * Body: { full_name }
+    * Auth: Bearer <valid_jwt>
+    * Expected: {
+    *   "success": true,
+    *   "message": "User details updated successfully",
+    *   "data": { "id": "uuid" }
+    * }
+    */
     console.log('Test 2: Partial update (only full_name)');
     const partialUpdate = {
         full_name: 'Jane Smith',
@@ -126,7 +146,17 @@ export default function () {
     checkSuccess(response, 200);
     sleep(shortSleep());
 
-    // Test 3: Update with null values (clearing fields)
+    /**
+    * Test Case: Update with null values
+    * URL: {apiUrl}/users/details
+    * Body: { phone_number: null, address: null }
+    * Auth: Bearer <valid_jwt>
+    * Expected: {
+    *   "success": true,
+    *   "message": "User details updated successfully",
+    *   "data": { "id": "uuid" }
+    * }
+    */
     console.log('Test 3: Update with null values');
     const nullUpdate = {
         phone_number: null,
@@ -137,17 +167,36 @@ export default function () {
     checkSuccess(response, 200);
     sleep(shortSleep());
 
-    // Test 4: Update without JWT
+    /**
+    * Test Case: Update without JWT
+    * URL: {apiUrl}/users/details
+    * Body: { full_name, ... }
+    * Auth: None
+    * Expected (401): {
+    *   "success": false,
+    *   "message": "Missing authentication token"
+    * }
+    */
     console.log('Test 4: Update without JWT');
     const noAuthHeaders = {
         'Content-Type': 'application/json',
     };
 
     response = http.put(updateDetailsUrl, JSON.stringify(updatePayload), { headers: noAuthHeaders });
+    response = http.put(updateDetailsUrl, JSON.stringify(updatePayload), { headers: noAuthHeaders });
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 5: Update with invalid data types
+    /**
+    * Test Case: Update with invalid data types
+    * URL: {apiUrl}/users/details
+    * Body: { full_name: <int>, phone_number: <bool> }
+    * Auth: Bearer <valid_jwt>
+    * Expected (400): {
+    *   "success": false,
+    *   "message": "Invalid input data"
+    * }
+    */
     console.log('Test 5: Update with invalid data types');
     const invalidDataUpdate = {
         full_name: 12345, // Should be string
@@ -158,7 +207,16 @@ export default function () {
     checkError(response, 400);
     sleep(shortSleep());
 
-    // Test 6: Update with invalid date format
+    /**
+    * Test Case: Update with invalid date format
+    * URL: {apiUrl}/users/details
+    * Body: { date_of_birth: 'invalid-date' }
+    * Auth: Bearer <valid_jwt>
+    * Expected (400): {
+    *   "success": false,
+    *   "message": "Invalid date format"
+    * }
+    */
     console.log('Test 6: Update with invalid date format');
     const invalidDateUpdate = {
         date_of_birth: 'invalid-date',
@@ -168,7 +226,16 @@ export default function () {
     checkError(response, 400);
     sleep(shortSleep());
 
-    // Test 7: Update with future date of birth
+    /**
+    * Test Case: Update with future date of birth
+    * URL: {apiUrl}/users/details
+    * Body: { date_of_birth: '2099-12-31' }
+    * Auth: Bearer <valid_jwt>
+    * Expected (400): {
+    *   "success": false,
+    *   "message": "Date of birth cannot be in the future"
+    * }
+    */
     console.log('Test 7: Update with future date of birth');
     const futureDateUpdate = {
         date_of_birth: '2099-12-31',

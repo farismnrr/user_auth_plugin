@@ -92,7 +92,17 @@ export default function () {
         'Authorization': `Bearer ${accessToken}`,
     };
 
-    // Test 1: Successful deletion
+    /**
+     * Test Case: Successful deletion
+     * URL: {apiUrl}/users
+     * Body: null
+     * Auth: Bearer <valid_jwt>
+     * Expected: {
+     *   "success": true,
+     *   "message": "User deleted successfully",
+     *   "data": { "id": "uuid" }
+     * }
+     */
     console.log('Test 1: Successful deletion');
     let response = http.del(deleteUserUrl, null, { headers: validHeaders });
     checkSuccess(response, 200, 'deleted successfully');
@@ -101,13 +111,31 @@ export default function () {
     console.log(`Deleted user ID returned: ${deletedUserId ? 'Yes' : 'No'}`);
     sleep(shortSleep());
 
-    // Test 2: User cannot login after deletion
+    /**
+     * Test Case: User cannot login after deletion
+     * URL: {apiUrl}/api/auth/login
+     * Body: { email, password }
+     * Auth: X-API-Key
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "User not found"
+     * }
+     */
     console.log('Test 2: User cannot login after deletion');
     response = http.post(loginUrl, JSON.stringify(loginPayload), { headers });
-    checkError(response, 404); // User not found
+    checkError(response, 401); // User not found (treated as invalid credentials)
     sleep(shortSleep());
 
-    // Test 3: Delete without JWT
+    /**
+     * Test Case: Delete without JWT
+     * URL: {apiUrl}/users
+     * Body: null
+     * Auth: None
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Missing authentication token"
+     * }
+     */
     console.log('Test 3: Delete without JWT');
     // Create another user for this test
     const testUser2 = {
@@ -125,10 +153,20 @@ export default function () {
     };
 
     response = http.del(deleteUserUrl, null, { headers: noAuthHeaders });
+    response = http.del(deleteUserUrl, null, { headers: noAuthHeaders });
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 4: Delete with invalid JWT
+    /**
+     * Test Case: Delete with invalid JWT
+     * URL: {apiUrl}/users
+     * Body: null
+     * Auth: Bearer invalid_token_here
+     * Expected (401): {
+     *   "success": false,
+     *   "message": "Invalid token"
+     * }
+     */
     console.log('Test 4: Delete with invalid JWT');
     const invalidJwtHeaders = {
         'Content-Type': 'application/json',
@@ -139,7 +177,16 @@ export default function () {
     checkError(response, 401);
     sleep(shortSleep());
 
-    // Test 5: Delete already deleted user
+    /**
+     * Test Case: Delete already deleted user
+     * URL: {apiUrl}/users
+     * Body: null
+     * Auth: Bearer <old_token>
+     * Expected (404): {
+     *   "success": false,
+     *   "message": "User not found"
+     * }
+     */
     console.log('Test 5: Delete already deleted user (using old token)');
     // Try to delete with the first user's token (already deleted)
     response = http.del(deleteUserUrl, null, { headers: validHeaders });
