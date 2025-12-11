@@ -1,6 +1,6 @@
 # User Auth Plugin - Makefile for Development Automation
 
-.PHONY: help dev start install-watch build test test-integration test-e2e test-e2e-auth test-e2e-users test-e2e-details migrate-up migrate-down migrate-fresh db-reset clean kill
+.PHONY: help dev start install-watch build test test-integration test-e2e test-e2e-auth test-e2e-users test-e2e-details test-e2e-tenants test-e2e-soft-delete migrate-up migrate-down migrate-fresh db-reset clean kill
 
 # Default target
 help:
@@ -23,6 +23,8 @@ help:
 	@echo "  make test-e2e-auth    - Run e2e auth tests only"
 	@echo "  make test-e2e-users   - Run e2e user tests only"
 	@echo "  make test-e2e-details - Run e2e user details tests only"
+	@echo "  make test-e2e-tenants - Run e2e tenant tests only"
+	@echo "  make test-e2e-soft-delete - Run e2e soft delete tests only"
 	@echo "  make migrate-up       - Run database migrations"
 	@echo "  make migrate-down     - Rollback last migration"
 	@echo "  make migrate-fresh    - Drop all tables and re-run migrations"
@@ -150,6 +152,23 @@ test-e2e-details:
 	@$(K6_CMD) tests/e2e/k6/user_details/update.js
 	@$(K6_CMD) tests/e2e/k6/user_details/upload.js
 	@echo "✅ User details tests completed"
+
+# E2E tenant tests only
+test-e2e-tenants:
+	@echo "🧪 Running e2e tenant tests..."
+	@$(K6_CMD) tests/e2e/k6/tenants/create.js
+	@$(K6_CMD) tests/e2e/k6/tenants/get.js
+	@$(K6_CMD) tests/e2e/k6/tenants/update.js
+	@$(K6_CMD) tests/e2e/k6/tenants/delete.js
+	@echo "✅ Tenant tests completed"
+
+# E2E soft delete tests only
+test-e2e-soft-delete:
+	@echo "🧪 Running e2e soft delete tests..."
+	@$(K6_CMD) tests/e2e/k6/users/soft_delete.js
+	@$(K6_CMD) tests/e2e/k6/user_details/soft_delete.js
+	@$(K6_CMD) tests/e2e/k6/tenants/soft_delete.js
+	@echo "✅ Soft delete tests completed"
 
 # Load .env variables and construct DATABASE_URL from CORE_DB_* variables
 define load_env_and_db_url

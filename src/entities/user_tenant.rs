@@ -1,24 +1,16 @@
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Utc};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
-/// User Details entity representing the user_details table in the database.
-///
-/// This SeaORM model maps to the `user_details` table and stores additional
-/// user information with a one-to-one relationship to the users table.
+/// User-Tenant junction entity for many-to-many relationship
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "user_details")]
+#[sea_orm(table_name = "user_tenants")]
 pub struct Model {
-    #[sea_orm(primary_key, auto_increment = false)]
+    #[sea_orm(primary_key)]
     pub id: Uuid,
-    #[sea_orm(unique)]
     pub user_id: Uuid,
-    pub full_name: Option<String>,
-    pub phone_number: Option<String>,
-    pub address: Option<String>,
-    pub date_of_birth: Option<NaiveDate>,
-    pub profile_picture_url: Option<String>,
-    pub deleted_at: Option<DateTime<Utc>>,
+    pub tenant_id: Uuid,
+    pub role: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -33,11 +25,25 @@ pub enum Relation {
         on_delete = "Cascade"
     )]
     User,
+    #[sea_orm(
+        belongs_to = "super::tenant::Entity",
+        from = "Column::TenantId",
+        to = "super::tenant::Column::Id",
+        on_update = "Cascade",
+        on_delete = "Cascade"
+    )]
+    Tenant,
 }
 
 impl Related<super::user::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::User.def()
+    }
+}
+
+impl Related<super::tenant::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Tenant.def()
     }
 }
 

@@ -82,6 +82,7 @@ impl UserDetailsRepositoryTrait for UserDetailsRepository {
     async fn find_by_user_id(&self, user_id: Uuid) -> Result<Option<UserDetails>, AppError> {
         let user_details = UserDetailsEntity::find()
             .filter(user_details::Column::UserId.eq(user_id))
+            .filter(user_details::Column::DeletedAt.is_null())
             .one(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;

@@ -11,7 +11,6 @@ pub struct CreateUserRequest {
     pub username: String,
     pub email: String,
     pub password: String,
-    pub role: String,
 }
 
 /// Request DTO for updating an existing user.
@@ -22,7 +21,6 @@ pub struct UpdateUserRequest {
     pub username: Option<String>,
     pub email: Option<String>,
     pub password: Option<String>,
-    pub role: Option<String>,
 }
 
 /// Response DTO for user data.
@@ -35,7 +33,6 @@ pub struct UserResponse {
     pub id: Uuid,
     pub username: String,
     pub email: String,
-    pub role: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub details: Option<UserDetailsResponse>,

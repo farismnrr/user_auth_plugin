@@ -59,6 +59,11 @@ impl MigrationTrait for Migration {
                             .null(),
                     )
                     .col(
+                        ColumnDef::new(UserDetails::DeletedAt)
+                            .timestamp_with_time_zone()
+                            .null(),
+                    )
+                    .col(
                         ColumnDef::new(UserDetails::CreatedAt)
                             .timestamp_with_time_zone()
                             .not_null()
@@ -101,6 +106,7 @@ enum UserDetails {
     Address,
     DateOfBirth,
     ProfilePictureUrl,
+    DeletedAt,
     CreatedAt,
     UpdatedAt,
 }

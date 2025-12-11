@@ -62,7 +62,6 @@ impl UserRepositoryTrait for UserRepository {
             username: Set(req.username.clone()),
             email: Set(req.email.clone()),
             password_hash: Set(password_hash),
-            role: Set(req.role.clone()),
             ..Default::default()
         };
 
@@ -85,6 +84,7 @@ impl UserRepositoryTrait for UserRepository {
 
     async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, AppError> {
         let user = UserEntity::find_by_id(id)
+            .filter(user::Column::DeletedAt.is_null())
             .one(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
@@ -95,6 +95,7 @@ impl UserRepositoryTrait for UserRepository {
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
         let user = UserEntity::find()
             .filter(user::Column::Email.eq(email))
+            .filter(user::Column::DeletedAt.is_null())
             .one(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
@@ -105,6 +106,7 @@ impl UserRepositoryTrait for UserRepository {
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
         let user = UserEntity::find()
             .filter(user::Column::Username.eq(username))
+            .filter(user::Column::DeletedAt.is_null())
             .one(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
@@ -114,6 +116,7 @@ impl UserRepositoryTrait for UserRepository {
 
     async fn find_all(&self) -> Result<Vec<User>, AppError> {
         let users = UserEntity::find()
+            .filter(user::Column::DeletedAt.is_null())
             .order_by_desc(user::Column::CreatedAt)
             .all(&*self.db)
             .await
@@ -140,9 +143,7 @@ impl UserRepositoryTrait for UserRepository {
             let password_hash = password::hash_password(password)?;
             user.password_hash = Set(password_hash);
         }
-        if let Some(ref role) = req.role {
-            user.role = Set(role.clone());
-        }
+
 
         user.updated_at = Set(chrono::Utc::now());
 
@@ -164,14 +165,17 @@ impl UserRepositoryTrait for UserRepository {
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), AppError> {
-        let result = UserEntity::delete_by_id(id)
-            .exec(&*self.db)
-            .await
-            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
-
-        if result.rows_affected == 0 {
+        let existing = self.find_by_id(id).await?;
+        if existing.is_none() {
             return Err(AppError::NotFound(format!("User with id {} not found", id)));
         }
+
+        let mut user: user::ActiveModel = existing.unwrap().into();
+        user.deleted_at = Set(Some(chrono::Utc::now()));
+
+        user.update(&*self.db)
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         Ok(())
     }

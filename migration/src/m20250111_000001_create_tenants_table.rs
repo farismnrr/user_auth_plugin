@@ -1,12 +1,10 @@
-//! Initial Users Table Migration
+//! Tenants Table Migration
 //!
-//! Creates the users table with UUID primary key, unique username and email,
-//! password hash, and timestamps.
-//! Note: Role is per-tenant in user_tenants table (multi-tenant system)
+//! Creates the tenants table for multi-tenancy support.
 
 use sea_orm_migration::prelude::*;
 
-/// Migration to create the users table.
+/// Migration to create the tenants table.
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
@@ -16,48 +14,40 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Users::Table)
+                    .table(Tenants::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(Users::Id)
+                        ColumnDef::new(Tenants::Id)
                             .uuid()
                             .not_null()
                             .primary_key()
                             .extra("DEFAULT gen_random_uuid()".to_string()),
                     )
                     .col(
-                        ColumnDef::new(Users::Username)
+                        ColumnDef::new(Tenants::Name)
                             .string()
                             .string_len(255)
                             .not_null()
                             .unique_key(),
                     )
                     .col(
-                        ColumnDef::new(Users::Email)
-                            .string()
-                            .string_len(255)
-                            .not_null()
-                            .unique_key(),
+                        ColumnDef::new(Tenants::Description)
+                            .text()
+                            .null(),
                     )
                     .col(
-                        ColumnDef::new(Users::PasswordHash)
-                            .string()
-                            .string_len(255)
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(Users::DeletedAt)
+                        ColumnDef::new(Tenants::DeletedAt)
                             .timestamp_with_time_zone()
                             .null(),
                     )
                     .col(
-                        ColumnDef::new(Users::CreatedAt)
+                        ColumnDef::new(Tenants::CreatedAt)
                             .timestamp_with_time_zone()
                             .not_null()
                             .extra("DEFAULT NOW()".to_string()),
                     )
                     .col(
-                        ColumnDef::new(Users::UpdatedAt)
+                        ColumnDef::new(Tenants::UpdatedAt)
                             .timestamp_with_time_zone()
                             .not_null()
                             .extra("DEFAULT NOW()".to_string()),
@@ -69,19 +59,18 @@ impl MigrationTrait for Migration {
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         manager
-            .drop_table(Table::drop().table(Users::Table).to_owned())
+            .drop_table(Table::drop().table(Tenants::Table).to_owned())
             .await
     }
 }
 
-/// Column identifiers for the users table.
+/// Column identifiers for the tenants table.
 #[derive(DeriveIden)]
-enum Users {
+enum Tenants {
     Table,
     Id,
-    Username,
-    Email,
-    PasswordHash,
+    Name,
+    Description,
     DeletedAt,
     CreatedAt,
     UpdatedAt,

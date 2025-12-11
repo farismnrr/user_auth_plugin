@@ -1,4 +1,4 @@
-# User Auth Plugin
+# Multi Tenant User Management Plugin
 
 A production-ready, general-purpose user authentication and management service built with Rust and Actix-web. Designed to be easily plugged into any application requiring secure user management, JWT authentication, and role-based access control.
 

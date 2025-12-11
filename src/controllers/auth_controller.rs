@@ -25,7 +25,7 @@ pub async fn register(
 ) -> Result<impl Responder, AppError> {
     let auth_response = usecase.register(body.into_inner(), &req).await?;
 
-    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
+    Ok(HttpResponse::Created().json(SuccessResponseDTO::new(
         "User registered successfully",
         RegisterResponse {
             id: auth_response.user.id,

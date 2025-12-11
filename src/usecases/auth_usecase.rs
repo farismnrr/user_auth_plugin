@@ -8,6 +8,7 @@ use crate::errors::AppError;
 use crate::repositories::user_activity_log_repository::UserActivityLogRepositoryTrait;
 use crate::repositories::user_repository::UserRepositoryTrait;
 use crate::repositories::user_session_repository::UserSessionRepositoryTrait;
+use crate::repositories::user_tenant_repository::UserTenantRepositoryTrait;
 use crate::utils::{jwt::JwtService, password, request_helper};
 use crate::validators::user_validator;
 use actix_web::HttpMessage;
@@ -23,6 +24,7 @@ pub struct AuthUseCase {
     repository: Arc<dyn UserRepositoryTrait>,
     user_details_repository:
         Arc<dyn crate::repositories::user_details_repository::UserDetailsRepositoryTrait>,
+    user_tenant_repository: Arc<dyn UserTenantRepositoryTrait>,
     session_repository: Arc<dyn UserSessionRepositoryTrait>,
     activity_log_repository: Arc<dyn UserActivityLogRepositoryTrait>,
     jwt_service: JwtService,
@@ -42,12 +44,14 @@ impl AuthUseCase {
         user_details_repository: Arc<
             dyn crate::repositories::user_details_repository::UserDetailsRepositoryTrait,
         >,
+        user_tenant_repository: Arc<dyn UserTenantRepositoryTrait>,
         session_repository: Arc<dyn UserSessionRepositoryTrait>,
         activity_log_repository: Arc<dyn UserActivityLogRepositoryTrait>,
     ) -> Self {
         Self {
             repository,
             user_details_repository,
+            user_tenant_repository,
             session_repository,
             activity_log_repository,
             jwt_service: JwtService::new(),
@@ -94,25 +98,53 @@ impl AuthUseCase {
             return Err(e);
         }
 
-        // Check if email already exists
-        if self.repository.find_by_email(&req.email).await?.is_some() {
-            let err = AppError::Conflict("Email already registered".to_string());
-            self.log_activity_failure(None, "register", &err, ip_address, user_agent)
-                .await;
-            return Err(err);
-        }
-
-        // Create user via repository
-        let create_req = CreateUserRequest {
-            username: req.username,
-            email: req.email,
-            password: req.password,
-            role: req.role,
+        // Step 1: Check if user exists globally (by email)
+        let user = match self.repository.find_by_email(&req.email).await? {
+            Some(existing_user) => {
+                // User exists, verify password matches (for security)
+                if !password::verify_password(&req.password, &existing_user.password_hash)? {
+                    let err = AppError::Unauthorized("Invalid credentials".to_string());
+                    self.log_activity_failure(Some(existing_user.id), "register", &err, ip_address, user_agent)
+                        .await;
+                    return Err(err);
+                }
+                existing_user
+            }
+            None => {
+                // User doesn't exist, create new user
+                let create_req = CreateUserRequest {
+                    username: req.username.clone(),
+                    email: req.email.clone(),
+                    password: req.password.clone(),
+                };
+                let new_user = self.repository.create(create_req).await?;
+                
+                // Create user_details for new user
+                let _ = self.user_details_repository.create(new_user.id).await?;
+                
+                new_user
+            }
         };
-        let user = self.repository.create(create_req).await?;
 
-        // Create user_details with default profile picture
-        let _user_details = self.user_details_repository.create(user.id).await?;
+        // Step 2: Check if user is already assigned to this tenant
+        match self.user_tenant_repository
+            .get_user_role_in_tenant(user.id, req.tenant_id)
+            .await?
+        {
+            Some(_existing_role) => {
+                // User already in tenant
+                let err = AppError::Conflict("User already registered in this tenant".to_string());
+                self.log_activity_failure(Some(user.id), "register", &err, ip_address, user_agent)
+                    .await;
+                return Err(err);
+            }
+            None => {
+                // Assign user to tenant with role
+                self.user_tenant_repository
+                    .add_user_to_tenant(user.id, req.tenant_id, req.role)
+                    .await?;
+            }
+        }
 
         // Generate tokens
         let access_token = self
@@ -190,6 +222,15 @@ impl AuthUseCase {
             .await;
             return Err(err);
         }
+
+        // Validate tenant membership
+        let _role = self.user_tenant_repository
+            .get_user_role_in_tenant(user.id, req.tenant_id)
+            .await?
+            .ok_or_else(|| {
+                let err = AppError::Unauthorized("User not authorized for this tenant".to_string());
+                err
+            })?;
 
         // Generate tokens
         let access_token = self
@@ -463,7 +504,6 @@ impl AuthUseCase {
             username: None,
             email: None,
             password: Some(req.new_password),
-            role: None,
         };
         self.repository.update(user_id, update_req).await?;
 
@@ -585,7 +625,6 @@ impl AuthUseCase {
             id: user.id,
             username: user.username,
             email: user.email,
-            role: user.role,
             created_at: user.created_at,
             updated_at: user.updated_at,
             details: None, // Will be populated when fetching with user_details
@@ -601,7 +640,6 @@ impl AuthUseCase {
             id: user.id,
             username: user.username,
             email: user.email,
-            role: user.role,
             created_at: user.created_at,
             updated_at: user.updated_at,
             details: user_details.map(|details| UserDetailsResponse {

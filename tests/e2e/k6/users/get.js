@@ -80,9 +80,10 @@ export default function () {
     // Setup: Create and login a test user
     const testUser = {
         username: randomUsername(),
+        tenant_id: TENANT_ID,
+        role: "user",
         email: randomEmail(),
         password: randomPassword(),
-        role: 'user',
     };
 
     http.post(registerUrl, JSON.stringify(testUser), { headers });

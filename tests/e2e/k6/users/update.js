@@ -77,16 +77,18 @@ export default function () {
     // Setup: Create two test users
     const testUser1 = {
         username: randomUsername(),
+        tenant_id: TENANT_ID,
+        role: "user",
         email: randomEmail(),
         password: randomPassword(),
-        role: 'user',
     };
 
     const testUser2 = {
         username: randomUsername(),
+        tenant_id: TENANT_ID,
+        role: "user",
         email: randomEmail(),
         password: randomPassword(),
-        role: 'user',
     };
 
     http.post(registerUrl, JSON.stringify(testUser1), { headers });
@@ -123,6 +125,8 @@ export default function () {
     console.log('Test 1: Successful update with valid data');
     const updatePayload = {
         username: randomUsername(),
+        tenant_id: TENANT_ID,
+        role: "user",
         email: randomEmail(),
     };
 
@@ -147,6 +151,8 @@ export default function () {
     console.log('Test 2: Partial update (only username)');
     const partialUpdate = {
         username: randomUsername(),
+        tenant_id: TENANT_ID,
+        role: "user",
     };
 
     response = http.put(updateUserUrl, JSON.stringify(partialUpdate), { headers: validHeaders });

@@ -1,9 +1,13 @@
 //! Data Access Layer
 //!
 //! This module contains repository implementations for database operations.
-//! Repositories abstract database access and provide a clean interface for use cases.
+//! Repository Layer
+//!
+//! This module contains repository implementations for database access.
 
+pub mod tenant_repository;
 pub mod user_activity_log_repository;
 pub mod user_details_repository;
 pub mod user_repository;
 pub mod user_session_repository;
+pub mod user_tenant_repository;

@@ -128,11 +128,15 @@ pub async fn run_server() -> std::io::Result<()> {
     use crate::repositories::user_details_repository::{UserDetailsRepository, UserDetailsRepositoryTrait};
     use crate::repositories::user_session_repository::{UserSessionRepository, UserSessionRepositoryTrait};
     use crate::repositories::user_activity_log_repository::{UserActivityLogRepository, UserActivityLogRepositoryTrait};
+    use crate::repositories::tenant_repository::{TenantRepository, TenantRepositoryTrait};
+    use crate::repositories::user_tenant_repository::{UserTenantRepository, UserTenantRepositoryTrait};
     use crate::usecases::user_usecase::UserUseCase;
     use crate::usecases::auth_usecase::AuthUseCase;
     use crate::usecases::user_details_usecase::UserDetailsUseCase;
+    use crate::usecases::tenant_usecase::TenantUseCase;
     use crate::routes::user_routes;
     use crate::routes::auth_routes;
+    use crate::routes::tenant_routes;
 
     let user_repository = UserRepository::new(db.clone());
     let user_repository: Arc<dyn UserRepositoryTrait> = Arc::new(user_repository);
@@ -140,20 +144,23 @@ pub async fn run_server() -> std::io::Result<()> {
     let user_details_repository = UserDetailsRepository::new(db.clone());
     let user_details_repository: Arc<dyn UserDetailsRepositoryTrait> = Arc::new(user_details_repository);
     
-    let user_session_repository = UserSessionRepository::new(db.clone());
-    let user_session_repository: Arc<dyn UserSessionRepositoryTrait> = Arc::new(user_session_repository);
-    
-    let user_activity_log_repository = UserActivityLogRepository::new(db.clone());
-    let user_activity_log_repository: Arc<dyn UserActivityLogRepositoryTrait> = Arc::new(user_activity_log_repository);
-    
+    let user_repository = Arc::new(UserRepository::new(db.clone()));
+    let user_details_repository = Arc::new(UserDetailsRepository::new(db.clone()));
+    let user_session_repository = Arc::new(UserSessionRepository::new(db.clone()));
+    let user_activity_log_repository = Arc::new(UserActivityLogRepository::new(db.clone()));
+    let tenant_repository = Arc::new(TenantRepository::new(db.clone()));
+    let user_tenant_repository = Arc::new(UserTenantRepository::new(db.clone()));
+
     let user_usecase = Arc::new(UserUseCase::new(user_repository.clone(), user_details_repository.clone()));
     let auth_usecase = Arc::new(AuthUseCase::new(
         user_repository.clone(),
         user_details_repository.clone(),
+        user_tenant_repository.clone(),
         user_session_repository.clone(),
         user_activity_log_repository.clone(),
     ));
     let user_details_usecase = Arc::new(UserDetailsUseCase::new(user_details_repository.clone()));
+    let tenant_usecase = Arc::new(TenantUseCase::new(tenant_repository.clone()));
 
     let secret_key = Arc::new(std::env::var("SECRET_KEY").unwrap_or_else(|_| {
         info!("SECRET_KEY not set; using empty string for development");
@@ -168,6 +175,7 @@ pub async fn run_server() -> std::io::Result<()> {
     let user_usecase_for_factory = user_usecase.clone();
     let auth_usecase_for_factory = auth_usecase.clone();
     let user_details_usecase_for_factory = user_details_usecase.clone();
+    let tenant_usecase_for_factory = tenant_usecase.clone();
 
     let server = HttpServer::new(move || {
         App::new()
@@ -177,6 +185,7 @@ pub async fn run_server() -> std::io::Result<()> {
             .app_data(web::Data::new(user_usecase_for_factory.clone()))
             .app_data(web::Data::new(auth_usecase_for_factory.clone()))
             .app_data(web::Data::new(user_details_usecase_for_factory.clone()))
+            .app_data(web::Data::new(tenant_usecase_for_factory.clone()))
             .wrap(PoweredByMiddleware)
             .wrap(RequestLoggerMiddleware)
             .wrap(middleware::Compress::default())
@@ -208,9 +217,10 @@ pub async fn run_server() -> std::io::Result<()> {
                     .configure(auth_routes::configure_api_key_routes)
             )
             
-            // JWT protected routes (logout, verify, users)
+            // JWT protected routes (logout, verify, users, tenants)
             .configure(user_routes::configure_user_routes)
             .configure(auth_routes::configure_jwt_routes)
+            .configure(tenant_routes::configure_tenant_routes)
     })
     .bind(("0.0.0.0", 5500))?;
 

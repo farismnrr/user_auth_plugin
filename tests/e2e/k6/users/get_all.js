@@ -75,9 +75,10 @@ export default function () {
     for (let i = 0; i < 3; i++) {
         const user = {
             username: randomUsername(),
+        tenant_id: TENANT_ID,
+        role: "user",
             email: randomEmail(),
             password: randomPassword(),
-            role: 'user',
         };
         users.push(user);
         http.post(registerUrl, JSON.stringify(user), { headers });

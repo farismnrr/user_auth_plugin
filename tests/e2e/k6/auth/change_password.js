@@ -63,15 +63,15 @@ export default function () {
     // Setup: Create a test user first
     const testUser = {
         username: randomUsername(),
+        tenant_id: TENANT_ID,
+        role: "user",
         email: randomEmail(),
         password: randomPassword(),
-        role: 'user',
     };
 
     /**
      * Setup: Create a test user
      * URL: {apiUrl}/api/auth/register
-     * Body: { username, email, password, role: 'user' }
      * Auth: X-API-Key
      * Expected: {
      *   "success": true,

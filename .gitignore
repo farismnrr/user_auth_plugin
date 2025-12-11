@@ -3,6 +3,7 @@
 queries/
 assets/
 logs/
+coverage/
 .current_log
 
 .env

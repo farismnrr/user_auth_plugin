@@ -20,7 +20,7 @@
  *     "role": "string"
  *   }
  * 
- * Success Response (200):
+ * Success Response (201):
  *   {
  *     "success": true,
  *     "message": "User registered successfully",
@@ -67,7 +67,7 @@ export default function () {
     /**
      * Test Case: Successful registration
      * URL: {apiUrl}/api/auth/register
-     * Body: { username, email, password, role: 'user' }
+     * Body: { username, email, password }
      * Auth: X-API-Key
      * Expected: {
      *   "success": true,
@@ -78,13 +78,14 @@ export default function () {
     console.log('Test 1: Successful registration');
     const validPayload = {
         username: randomUsername(),
+        tenant_id: TENANT_ID,
+        role: "user",
         email: randomEmail(),
         password: randomPassword(),
-        role: 'user',
     };
 
     let response = http.post(baseUrl, JSON.stringify(validPayload), { headers });
-    checkSuccess(response, 200, 'registered successfully');
+    checkSuccess(response, 201, 'registered successfully');
     sleep(shortSleep());
 
     /**
@@ -100,9 +101,10 @@ export default function () {
     console.log('Test 2: Duplicate email');
     const duplicateEmailPayload = {
         username: randomUsername(),
+        tenant_id: TENANT_ID,
+        role: "user",
         email: validPayload.email, // Same email
         password: randomPassword(),
-        role: 'user',
     };
 
     response = http.post(baseUrl, JSON.stringify(duplicateEmailPayload), { headers });
@@ -124,7 +126,6 @@ export default function () {
         username: validPayload.username, // Same username
         email: randomEmail(),
         password: randomPassword(),
-        role: 'user',
     };
 
     response = http.post(baseUrl, JSON.stringify(duplicateUsernamePayload), { headers });
@@ -144,9 +145,10 @@ export default function () {
     console.log('Test 4: Invalid email format');
     const invalidEmailPayload = {
         username: randomUsername(),
+        tenant_id: TENANT_ID,
+        role: "user",
         email: 'invalid-email',
         password: randomPassword(),
-        role: 'user',
     };
 
     response = http.post(baseUrl, JSON.stringify(invalidEmailPayload), { headers });
@@ -166,8 +168,9 @@ export default function () {
     console.log('Test 5: Missing required fields (no email)');
     const missingFieldPayload = {
         username: randomUsername(),
+        tenant_id: TENANT_ID,
+        role: "user",
         password: randomPassword(),
-        role: 'user',
     };
 
     response = http.post(baseUrl, JSON.stringify(missingFieldPayload), { headers });
@@ -187,9 +190,10 @@ export default function () {
     console.log('Test 6: Weak password');
     const weakPasswordPayload = {
         username: randomUsername(),
+        tenant_id: TENANT_ID,
+        role: "user",
         email: randomEmail(),
         password: '123',
-        role: 'user',
     };
 
     response = http.post(baseUrl, JSON.stringify(weakPasswordPayload), { headers });
