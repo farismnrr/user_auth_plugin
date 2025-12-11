@@ -59,7 +59,6 @@ import { getTestTenantId, registerTestUser } from '../helpers.js';
 import {
     randomEmail,
     randomUsername,
-    randomPassword,
     extractAccessToken,
     extractUserId,
     checkSuccess,

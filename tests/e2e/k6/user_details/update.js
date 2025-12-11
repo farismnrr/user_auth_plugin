@@ -57,9 +57,6 @@ import { sleep } from 'k6';
 import { BASE_URL, options, headers } from '../config.js';
 import { getTestTenantId, registerTestUser } from '../helpers.js';
 import {
-    randomEmail,
-    randomUsername,
-    randomPassword,
     extractAccessToken,
     extractUserId,
     checkSuccess,

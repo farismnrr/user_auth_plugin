@@ -60,8 +60,6 @@ import http from 'k6/http';
 import { sleep } from 'k6';
 import { options } from '../config.js';
 import {
-    randomEmail,
-    randomUsername,
     randomPassword,
     extractAccessToken,
     extractRefreshToken,

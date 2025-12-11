@@ -52,9 +52,6 @@ import { FormData } from 'https://jslib.k6.io/formdata/0.0.2/index.js';
 import { BASE_URL, options, headers } from '../config.js';
 import { getTestTenantId, registerTestUser } from '../helpers.js';
 import {
-    randomEmail,
-    randomUsername,
-    randomPassword,
     extractAccessToken,
     extractUserId,
     checkSuccess,
