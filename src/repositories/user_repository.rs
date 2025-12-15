@@ -6,6 +6,8 @@ use async_trait::async_trait;
 use sea_orm::*;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::infrastructures::cache::RocksDbCache;
+use std::time::Duration;
 
 /// Trait defining user repository operations.
 ///
@@ -46,6 +48,7 @@ pub trait UserRepositoryTrait: Send + Sync {
 /// This implementation provides PostgreSQL-backed user data access operations.
 pub struct UserRepository {
     db: Arc<DatabaseConnection>,
+    cache: Arc<RocksDbCache>,
 }
 
 impl UserRepository {
@@ -54,8 +57,8 @@ impl UserRepository {
     /// # Arguments
     ///
     /// * `db` - Arc-wrapped database connection
-    pub fn new(db: Arc<DatabaseConnection>) -> Self {
-        Self { db }
+    pub fn new(db: Arc<DatabaseConnection>, cache: Arc<RocksDbCache>) -> Self {
+        Self { db, cache }
     }
 }
 
@@ -90,11 +93,21 @@ impl UserRepositoryTrait for UserRepository {
     }
 
     async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, AppError> {
+        let cache_key = format!("user:{}", id);
+        if let Some(cached_user) = self.cache.get::<User>(&cache_key) {
+            log::info!("CACHE HIT: {}", cache_key);
+            return Ok(Some(cached_user));
+        }
+
         let user = UserEntity::find_by_id(id)
             .filter(user::Column::DeletedAt.is_null())
             .one(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        if let Some(ref u) = user {
+            self.cache.set(&cache_key, u, Duration::from_secs(3600));
+        }
 
         Ok(user)
     }
@@ -102,12 +115,22 @@ impl UserRepositoryTrait for UserRepository {
 
 
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
+        let cache_key = format!("user:username:{}", username);
+        if let Some(cached_user) = self.cache.get::<User>(&cache_key) {
+             log::info!("CACHE HIT: {}", cache_key);
+             return Ok(Some(cached_user));
+        }
+
         let user = UserEntity::find()
             .filter(user::Column::Username.eq(username))
             .filter(user::Column::DeletedAt.is_null())
             .one(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        if let Some(ref u) = user {
+             self.cache.set(&cache_key, u, Duration::from_secs(3600));
+        }
 
         Ok(user)
     }
@@ -129,7 +152,7 @@ impl UserRepositoryTrait for UserRepository {
             return Err(AppError::NotFound("User not found".to_string()));
         }
 
-        let mut user: user::ActiveModel = existing.unwrap().into();
+        let mut user: user::ActiveModel = existing.clone().unwrap().into();
 
         if let Some(ref username) = req.username {
             user.username = Set(username.clone());
@@ -159,6 +182,21 @@ impl UserRepositoryTrait for UserRepository {
                 _ => AppError::DatabaseError(e.to_string()),
             })?;
 
+        // Invalidate cache
+        self.cache.del(&format!("user:{}", id));
+        // We might not know the old username easily without another DB call if it wasn't in cache or existing, 
+        // but typically user update changes are critical enough. 
+        // For stricter consistency, we could invalidate the username key if we knew it.
+        // For now, at least ID cache is cleared.
+        // Also if username was changed, invalidate old username key is tricky without previous value.
+        // Since we loaded 'existing' earlier, we can use it.
+        // Let's invalidate 'existing' username too.
+        if let Some(old_user) = existing {
+             self.cache.del(&format!("user:username:{}", old_user.username));
+        }
+        // Also invalidate new username just in case.
+        self.cache.del(&format!("user:username:{}", result.username));
+
         Ok(result)
     }
 
@@ -180,6 +218,10 @@ impl UserRepositoryTrait for UserRepository {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         log::info!("Soft delete successful. DeletedAt: {:?}", res.deleted_at);
+        
+        // Invalidate cache
+        self.cache.del(&format!("user:{}", id));
+        self.cache.del(&format!("user:username:{}", res.username)); // Invalidate username cache too
 
         Ok(())
     }

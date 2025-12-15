@@ -4,6 +4,8 @@ use async_trait::async_trait;
 use sea_orm::*;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::infrastructures::cache::RocksDbCache;
+use std::time::Duration;
 
 #[async_trait]
 pub trait UserTenantRepositoryTrait: Send + Sync {
@@ -13,11 +15,12 @@ pub trait UserTenantRepositoryTrait: Send + Sync {
 
 pub struct UserTenantRepository {
     db: Arc<DatabaseConnection>,
+    cache: Arc<RocksDbCache>,
 }
 
 impl UserTenantRepository {
-    pub fn new(db: Arc<DatabaseConnection>) -> Self {
-        Self { db }
+    pub fn new(db: Arc<DatabaseConnection>, cache: Arc<RocksDbCache>) -> Self {
+        Self { db, cache }
     }
 }
 
@@ -50,6 +53,11 @@ impl UserTenantRepositoryTrait for UserTenantRepository {
     }
 
     async fn get_user_role_in_tenant(&self, user_id: Uuid, tenant_id: Uuid) -> Result<Option<String>, AppError> {
+        let cache_key = format!("user_tenant:{}:{}", user_id, tenant_id);
+        if let Some(cached_role) = self.cache.get::<String>(&cache_key) {
+            return Ok(Some(cached_role));
+        }
+
         let result = user_tenant::Entity::find()
             .filter(user_tenant::Column::UserId.eq(user_id))
             .filter(user_tenant::Column::TenantId.eq(tenant_id))
@@ -57,6 +65,12 @@ impl UserTenantRepositoryTrait for UserTenantRepository {
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
         
-        Ok(result.map(|ut| ut.role))
+        let role = result.map(|ut| ut.role);
+
+        if let Some(ref r) = role {
+            self.cache.set(&cache_key, r, Duration::from_secs(3600));
+        }
+
+        Ok(role)
     }
 }

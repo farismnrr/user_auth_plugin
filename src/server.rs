@@ -157,12 +157,16 @@ pub async fn run_server() -> std::io::Result<()> {
     // They are wrapped in `Arc` (Atomic Reference Counting) to allow thread-safe sharing
     // across multiple potential threads in the server.
 
-    let user_repository = Arc::new(UserRepository::new(db.clone()));
-    let user_details_repository = Arc::new(UserDetailsRepository::new(db.clone()));
+    use crate::infrastructures::cache::RocksDbCache;
+    let cache = Arc::new(RocksDbCache::new("./rocksdb_cache")
+        .map_err(|e| std::io::Error::other(format!("Failed to initialize RocksDB cache: {}", e)))?);
+
+    let user_repository = Arc::new(UserRepository::new(db.clone(), cache.clone()));
+    let user_details_repository = Arc::new(UserDetailsRepository::new(db.clone(), cache.clone()));
     let user_session_repository = Arc::new(UserSessionRepository::new(db.clone()));
     let user_activity_log_repository = Arc::new(UserActivityLogRepository::new(db.clone()));
-    let tenant_repository = Arc::new(TenantRepository::new(db.clone()));
-    let user_tenant_repository = Arc::new(UserTenantRepository::new(db.clone()));
+    let tenant_repository = Arc::new(TenantRepository::new(db.clone(), cache.clone()));
+    let user_tenant_repository = Arc::new(UserTenantRepository::new(db.clone(), cache.clone()));
 
     // ================================================================================================
     // 🧠 USECASE SECTION

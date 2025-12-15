@@ -5,6 +5,8 @@ use chrono::NaiveDate;
 use sea_orm::*;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::infrastructures::cache::RocksDbCache;
+use std::time::Duration;
 
 /// Trait defining user_details repository operations.
 ///
@@ -40,6 +42,7 @@ pub trait UserDetailsRepositoryTrait: Send + Sync {
 /// This implementation provides PostgreSQL-backed user_details data access operations.
 pub struct UserDetailsRepository {
     db: Arc<DatabaseConnection>,
+    cache: Arc<RocksDbCache>,
 }
 
 impl UserDetailsRepository {
@@ -48,8 +51,8 @@ impl UserDetailsRepository {
     /// # Arguments
     ///
     /// * `db` - Arc-wrapped database connection
-    pub fn new(db: Arc<DatabaseConnection>) -> Self {
-        Self { db }
+    pub fn new(db: Arc<DatabaseConnection>, cache: Arc<RocksDbCache>) -> Self {
+        Self { db, cache }
     }
 }
 
@@ -81,12 +84,21 @@ impl UserDetailsRepositoryTrait for UserDetailsRepository {
     }
 
     async fn find_by_user_id(&self, user_id: Uuid) -> Result<Option<UserDetails>, AppError> {
+        let cache_key = format!("user_details:{}", user_id);
+        if let Some(cached_details) = self.cache.get::<UserDetails>(&cache_key) {
+             return Ok(Some(cached_details));
+        }
+
         let user_details = UserDetailsEntity::find()
             .filter(user_details::Column::UserId.eq(user_id))
             .filter(user_details::Column::DeletedAt.is_null())
             .one(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        if let Some(ref d) = user_details {
+            self.cache.set(&cache_key, d, Duration::from_secs(3600));
+        }
 
         Ok(user_details)
     }
@@ -126,6 +138,7 @@ impl UserDetailsRepositoryTrait for UserDetailsRepository {
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
+        self.cache.del(&format!("user_details:{}", user_id));
         Ok(result)
     }
 
@@ -148,6 +161,7 @@ impl UserDetailsRepositoryTrait for UserDetailsRepository {
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
+        self.cache.del(&format!("user_details:{}", user_id));
         Ok(result)
     }
 }

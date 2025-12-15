@@ -4,6 +4,7 @@ queries/
 assets/
 logs/
 coverage/
+rocksdb_cache/
 
 Dockerfile
 entrypoint.sh

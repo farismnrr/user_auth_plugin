@@ -52,11 +52,12 @@ env_logger = "0.11.8"
 # JWT authentication
 jsonwebtoken = "9"
 
+rocksdb = "0.24.0"
+
 [dev-dependencies]
 # Testing utilities
 mockall = "0.13"
 reqwest = { version = "0.12.25", features = ["json", "blocking", "multipart", "cookies"] }
-rocksdb = "0.24.0"
 serde_json = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
 

@@ -5,6 +5,8 @@ use async_trait::async_trait;
 use sea_orm::*;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::infrastructures::cache::RocksDbCache;
+use std::time::Duration;
 
 /// Trait defining tenant repository operations.
 ///
@@ -41,6 +43,7 @@ pub trait TenantRepositoryTrait: Send + Sync {
 /// This implementation provides PostgreSQL-backed tenant data access operations.
 pub struct TenantRepository {
     db: Arc<DatabaseConnection>,
+    cache: Arc<RocksDbCache>,
 }
 
 impl TenantRepository {
@@ -49,8 +52,8 @@ impl TenantRepository {
     /// # Arguments
     ///
     /// * `db` - Arc-wrapped database connection
-    pub fn new(db: Arc<DatabaseConnection>) -> Self {
-        Self { db }
+    pub fn new(db: Arc<DatabaseConnection>, cache: Arc<RocksDbCache>) -> Self {
+        Self { db, cache }
     }
 }
 
@@ -82,22 +85,40 @@ impl TenantRepositoryTrait for TenantRepository {
     }
 
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Tenant>, AppError> {
+        let cache_key = format!("tenant:{}", id);
+        if let Some(cached_tenant) = self.cache.get::<Tenant>(&cache_key) {
+             return Ok(Some(cached_tenant));
+        }
+
         let tenant = TenantEntity::find_by_id(id)
             .filter(tenant::Column::DeletedAt.is_null())
             .one(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
+        if let Some(ref t) = tenant {
+            self.cache.set(&cache_key, t, Duration::from_secs(3600));
+        }
+
         Ok(tenant)
     }
 
     async fn find_by_name(&self, name: &str) -> Result<Option<Tenant>, AppError> {
+        let cache_key = format!("tenant:name:{}", name);
+        if let Some(cached_tenant) = self.cache.get::<Tenant>(&cache_key) {
+             return Ok(Some(cached_tenant));
+        }
+
         let tenant = TenantEntity::find()
             .filter(tenant::Column::Name.eq(name))
             .filter(tenant::Column::DeletedAt.is_null())
             .one(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        if let Some(ref t) = tenant {
+            self.cache.set(&cache_key, t, Duration::from_secs(3600));
+        }
 
         Ok(tenant)
     }
@@ -129,7 +150,7 @@ impl TenantRepositoryTrait for TenantRepository {
             return Err(AppError::NotFound("Tenant not found".to_string()));
         }
 
-        let mut tenant: tenant::ActiveModel = existing.unwrap().into();
+        let mut tenant: tenant::ActiveModel = existing.clone().unwrap().into();
 
         if let Some(ref name) = req.name {
             tenant.name = Set(name.clone());
@@ -154,6 +175,15 @@ impl TenantRepositoryTrait for TenantRepository {
                 _ => AppError::DatabaseError(e.to_string()),
             })?;
 
+        // Invalidate cache
+        self.cache.del(&format!("tenant:{}", id));
+        
+        // Invalidate name cache. Use the fetched existing tenant to get the old name.
+        if let Some(old_tenant) = existing {
+            self.cache.del(&format!("tenant:name:{}", old_tenant.name));
+        }
+        self.cache.del(&format!("tenant:name:{}", result.name)); // Invalidate new name too
+
         Ok(result)
     }
 
@@ -163,7 +193,7 @@ impl TenantRepositoryTrait for TenantRepository {
             return Err(AppError::NotFound("Tenant not found".to_string()));
         }
 
-        let mut tenant: tenant::ActiveModel = existing.unwrap().into();
+        let mut tenant: tenant::ActiveModel = existing.clone().unwrap().into();
         tenant.deleted_at = Set(Some(chrono::Utc::now()));
 
         tenant
@@ -171,6 +201,16 @@ impl TenantRepositoryTrait for TenantRepository {
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
+        // Invalidate cache
+        self.cache.del(&format!("tenant:{}", id));
+        // We need to fetch it to invalidate name cache, but delete returns () and we only have id here.
+        // Ideally we should have fetched it before deleting or just ignore the name cache if it's acceptable for it to expire naturally.
+        // But wait, line 161 fetches `existing`. 
+        // `existing` is Option<Tenant>.
+        if let Some(t) = existing {
+             self.cache.del(&format!("tenant:name:{}", t.name));
+        }
+        
         Ok(())
     }
 
