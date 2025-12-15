@@ -177,7 +177,13 @@ Register a new user account.
   ```json
   {
     "status": false,
-    "message": "Validation Error"
+    "message": "Validation Error",
+    "details": [
+      {
+        "field": "password",
+        "message": "Password too long"
+      }
+    ]
   }
   ```
   *(Status: 422)*

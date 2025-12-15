@@ -78,7 +78,7 @@ describe('GET /api/users/all - Get All Users', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Forbidden|Insufficient/i)
+                    message: "Forbidden"
                 }));
             }
         }
@@ -121,11 +121,14 @@ describe('GET /api/users/all - Get All Users', () => {
         expect(response.status).toBe(200);
         expect(response.data.status).toBe(true);
         expect(response.data.message).toBe("Users retrieved successfully");
-        expect(Array.isArray(response.data.data)).toBe(true);
-        if (response.data.data.length > 0) {
-            expect(response.data.data[0]).toHaveProperty("id");
-            expect(response.data.data[0]).toHaveProperty("username");
-            expect(response.data.data[0]).not.toHaveProperty("password");
+        expect(response.data.data).toHaveProperty("users");
+        expect(Array.isArray(response.data.data.users)).toBe(true);
+        expect(response.data.data).toHaveProperty("pagination");
+
+        if (response.data.data.users.length > 0) {
+            expect(response.data.data.users[0]).toHaveProperty("id");
+            expect(response.data.data.users[0]).toHaveProperty("username");
+            expect(response.data.data.users[0]).not.toHaveProperty("password");
         }
     });
 

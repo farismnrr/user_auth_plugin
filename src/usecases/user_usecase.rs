@@ -79,7 +79,7 @@ impl UserUseCase {
     pub async fn get_all_users(&self, tenant_id: Uuid, requesting_user_role: &str) -> Result<Vec<UserResponse>, AppError> {
         log::info!("get_all_users: requesting_role='{}'", requesting_user_role);
         if requesting_user_role != "admin" {
-            return Err(AppError::Forbidden("Insufficient permissions".to_string()));
+            return Err(AppError::Forbidden("Forbidden".to_string()));
         }
 
         let users = self.repository.find_all().await?;
@@ -121,7 +121,7 @@ impl UserUseCase {
             user_validator::validate_email(email)?;
         }
         if let Some(ref password) = req.password {
-            user_validator::validate_password(password)?;
+            user_validator::validate_password(password, "password")?;
         }
 
         // Update user via repository
@@ -163,10 +163,22 @@ impl UserUseCase {
             updated_at: user.updated_at,
             role,
             details: user_details.map(|details| {
+                let (first, last) = match details.full_name {
+                    Some(s) => {
+                        if let Some((f, l)) = s.split_once(' ') {
+                            (Some(f.to_string()), Some(l.to_string()))
+                        } else {
+                            (Some(s), None)
+                        }
+                    },
+                    None => (None, None)
+                };
+
                 UserDetailsResponse {
                     id: details.id,
                     user_id: details.user_id,
-                    full_name: details.full_name,
+                    first_name: first,
+                    last_name: last,
                     phone_number: details.phone_number,
                     address: details.address,
                     date_of_birth: details.date_of_birth,

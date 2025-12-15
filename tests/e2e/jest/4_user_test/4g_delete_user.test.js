@@ -54,7 +54,10 @@ describe('DELETE /api/users - Delete Current User', () => {
         expect(response.status).toBe(200);
         expect(response.data.status).toBe(true);
         expect(response.data.message).toBe("User deleted successfully");
-        expect(response.data.data).toHaveProperty("id");
+        expect(response.status).toBe(200);
+        expect(response.data.status).toBe(true);
+        expect(response.data.message).toBe("User deleted successfully");
+        // Contract JSON example does not show data
     });
 
     // 3. Verify login after deletion

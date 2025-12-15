@@ -44,7 +44,7 @@ Refresh access token using refresh token from cookie.
   ```json
   {
     "status": false,
-    "message": "Unauthorized"
+    "message": "Token expired"
   }
   ```
   *(Status: 401)*
@@ -82,10 +82,10 @@ Refresh access token using refresh token from cookie.
   ```json
   {
     "status": false,
-    "message": "Unauthorized" // or Forbidden
+    "message": "Unauthorized"
   }
   ```
-  *(Status: 401 or 403)*
+  *(Status: 401)*
 - **Side Effects**: None.
 
 ### 7. Successful token refresh

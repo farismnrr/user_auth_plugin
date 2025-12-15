@@ -56,12 +56,7 @@ Update an existing tenant.
   ```json
   {
     "status": true,
-    "message": "Tenant updated successfully",
-    "data": {
-      "id": "<tenant_id>",
-      "name": "Updated Name",
-      ...
-    }
+    "message": "Tenant updated successfully"
   }
   ```
   *(Status: 200)*
@@ -83,8 +78,7 @@ Update an existing tenant.
   ```json
   {
     "status": true,
-    "message": "Tenant updated successfully",
-    "data": { ... }
+    "message": "Tenant updated successfully"
   }
   ```
   *(Status: 200)*

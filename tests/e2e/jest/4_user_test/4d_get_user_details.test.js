@@ -54,8 +54,9 @@ describe('GET /api/users/details - Get User Details', () => {
         expect(response.status).toBe(200);
         expect(response.data.status).toBe(true);
         expect(response.data.message).toBe("User details retrieved successfully");
-        expect(response.data.data).toHaveProperty("full_name");
-        // Fields might be null if not updated (Scenario 3 checks that)
+        expect(response.data.data).toHaveProperty("user_details");
+        expect(response.data.data.user_details).toHaveProperty("first_name");
+        expect(response.data.data.user_details).toHaveProperty("last_name");
     });
 
     // 3. Get details when empty
@@ -68,11 +69,10 @@ describe('GET /api/users/details - Get User Details', () => {
         });
 
         expect(response.status).toBe(200);
-        const data = response.data.data;
+        const details = response.data.data.user_details;
         // Since we just created user and didn't update details, fields should be null or empty
-        // Contract says: expected null
-        expect(data.full_name).toBeNull();
-        // Assuming other fields are also null or optional string
+        expect(details.first_name).toBeNull();
+        expect(details.last_name).toBeNull();
     });
 
 });

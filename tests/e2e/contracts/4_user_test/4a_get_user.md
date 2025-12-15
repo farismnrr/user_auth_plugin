@@ -47,11 +47,13 @@ Retrieve current authenticated user's profile.
     "status": true,
     "message": "User retrieved successfully",
     "data": {
-      "id": "<user_a_id>",
-      "username": "<user_a_name>",
-      "email": "<user_a_email>",
-      "role": "user"
-      // Password must be EXCLUDED
+      "user": {
+        "id": "<user_a_id>",
+        "username": "<user_a_name>",
+        "email": "<user_a_email>",
+        "role": "user"
+        // Password must be EXCLUDED
+      }
     }
   }
   ```

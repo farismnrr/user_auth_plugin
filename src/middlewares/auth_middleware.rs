@@ -45,11 +45,17 @@ pub async fn validator(
             }
         }
         Err(e) => {
+            let message = if e.to_string().contains("ExpiredSignature") {
+                "Token expired"
+            } else {
+                "Unauthorized"
+            };
+
             let err = actix_web::error::InternalError::from_response(
-                e.to_string(), 
+                message, 
                 actix_web::HttpResponse::Unauthorized()
                     .content_type("application/json")
-                    .body(format!(r#"{{"status":false,"message":"Unauthorized","details":"{}","result":null}}"#, e))
+                    .body(format!(r#"{{"status":false,"message":"{}"}}"#, message))
             ).into();
             Err((err, req))
         }

@@ -19,9 +19,6 @@ pub trait UserRepositoryTrait: Send + Sync {
     /// Finds a user by their ID.
     async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, AppError>;
     
-    /// Finds a user by their email address.
-    async fn find_by_email(&self, email: &str) -> Result<Option<User>, AppError>;
-    
     /// Finds a user by their username.
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError>;
     
@@ -36,6 +33,9 @@ pub trait UserRepositoryTrait: Send + Sync {
 
     /// Finds a user by email, including soft-deleted ones.
     async fn find_by_email_with_deleted(&self, email: &str) -> Result<Option<User>, AppError>;
+
+    /// Finds a user by username, including soft-deleted ones.
+    async fn find_by_username_with_deleted(&self, username: &str) -> Result<Option<User>, AppError>;
 
     /// Restores a soft-deleted user.
     async fn restore(&self, id: Uuid, req: CreateUserRequest) -> Result<User, AppError>;
@@ -99,16 +99,7 @@ impl UserRepositoryTrait for UserRepository {
         Ok(user)
     }
 
-    async fn find_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
-        let user = UserEntity::find()
-            .filter(user::Column::Email.eq(email))
-            .filter(user::Column::DeletedAt.is_null())
-            .one(&*self.db)
-            .await
-            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
-        Ok(user)
-    }
 
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
         let user = UserEntity::find()
@@ -135,7 +126,7 @@ impl UserRepositoryTrait for UserRepository {
     async fn update(&self, id: Uuid, req: UpdateUserRequest) -> Result<User, AppError> {
         let existing = self.find_by_id(id).await?;
         if existing.is_none() {
-            return Err(AppError::NotFound(format!("User with id {} not found", id)));
+            return Err(AppError::NotFound("User not found".to_string()));
         }
 
         let mut user: user::ActiveModel = existing.unwrap().into();
@@ -174,7 +165,9 @@ impl UserRepositoryTrait for UserRepository {
     async fn delete(&self, id: Uuid) -> Result<(), AppError> {
         let existing = self.find_by_id(id).await?;
         if existing.is_none() {
-            return Err(AppError::NotFound(format!("User with id {} not found", id)));
+            // Idempotent delete: if not found, consider it deleted.
+            log::warn!("User {} not found for deletion (already deleted?)", id);
+            return Ok(());
         }
 
         let mut user: user::ActiveModel = existing.unwrap().into();
@@ -206,6 +199,16 @@ impl UserRepositoryTrait for UserRepository {
         Ok(user)
     }
 
+    async fn find_by_username_with_deleted(&self, username: &str) -> Result<Option<User>, AppError> {
+        let user = UserEntity::find()
+            .filter(user::Column::Username.eq(username))
+            .one(&*self.db)
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+
+        Ok(user)
+    }
+
     async fn restore(&self, id: Uuid, req: CreateUserRequest) -> Result<User, AppError> {
         let existing = UserEntity::find_by_id(id)
             .one(&*self.db)
@@ -213,7 +216,7 @@ impl UserRepositoryTrait for UserRepository {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         if existing.is_none() {
-            return Err(AppError::NotFound(format!("User with id {} not found", id)));
+            return Err(AppError::NotFound("User not found".to_string()));
         }
 
         let mut user: user::ActiveModel = existing.unwrap().into();

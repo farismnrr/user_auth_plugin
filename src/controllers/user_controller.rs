@@ -1,5 +1,6 @@
 use crate::dtos::user_dto::UpdateUserRequest;
 use crate::dtos::response_dto::{SuccessResponseDTO, IdResponse};
+use serde_json::json;
 use crate::errors::AppError;
 use crate::usecases::user_usecase::UserUseCase;
 use crate::usecases::auth_usecase::AuthUseCase;
@@ -22,7 +23,7 @@ pub async fn get_user(
 
     let user = usecase.get_user(user_id, tenant_id).await?;
 
-    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new("User retrieved successfully", user)))
+    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new("User retrieved successfully", json!({ "user": user }))))
 }
 
 /// Get all users
@@ -41,7 +42,19 @@ pub async fn get_all_users(
     
     let users = usecase.get_all_users(tenant_id, &current_user.role).await?;
 
-    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new("Users retrieved successfully", users)))
+    let total = users.len();
+    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
+        "Users retrieved successfully",
+        json!({
+            "users": users,
+            "pagination": {
+                "page": 1,
+                "limit": 10,
+                "total": total,
+                "total_pages": if total == 0 { 0 } else { (total as f64 / 10.0).ceil() as u64 }
+            }
+        })
+    )))
 }
 
 /// Update current user (from JWT)

@@ -97,7 +97,13 @@ describe('PUT /auth/reset - Change Password', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Validation Error/i)
+                    message: "Validation Error",
+                    details: expect.arrayContaining([
+                        expect.objectContaining({
+                            field: "confirm_new_password",
+                            message: "Passwords do not match"
+                        })
+                    ])
                 }));
             }
         }
@@ -122,7 +128,13 @@ describe('PUT /auth/reset - Change Password', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Validation Error/i)
+                    message: "Validation Error",
+                    details: expect.arrayContaining([
+                        expect.objectContaining({
+                            field: "new_password",
+                            message: "Password too weak"
+                        })
+                    ])
                 }));
             }
         }
@@ -132,12 +144,6 @@ describe('PUT /auth/reset - Change Password', () => {
     test('Scenario 5: Validation: New password SAME as old password', async () => {
         try {
             await axios.put(`${BASE_URL}/auth/reset`, {
-                old_password: "pass", // Assuming we use current simple pass for test or real pass? Contract says "pass" literally in body block
-                // But specifically "old_password": "pass". If user password is "Strong...", this test logic depends on if backend checks against ACTUAL old pass or just compares fields.
-                // Usually it checks against actual DB password.
-                // But contract says Pre-condition: Valid JWT. Request Body: old="pass", new="pass".
-                // If "pass" is not the real password, it fails Scenario 2 "Wrong old password" first.
-                // So I should use the REAL old password strictly.
                 old_password: testUser.password,
                 new_password: testUser.password,
                 confirm_new_password: testUser.password
@@ -153,7 +159,13 @@ describe('PUT /auth/reset - Change Password', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Bad Request|Validation Error/i)
+                    message: "Validation Error",
+                    details: expect.arrayContaining([
+                        expect.objectContaining({
+                            field: "new_password",
+                            message: "New password cannot be the same as old password"
+                        })
+                    ])
                 }));
             }
         }

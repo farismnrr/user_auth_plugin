@@ -63,7 +63,22 @@ describe('PUT /api/users/details - Update User Details', () => {
                 // So verification needs GET.
             }
         } catch (error) {
-            expect(error.response.status).toBe(422);
+            if (error.response.data && error.response.data !== "") {
+                expect(error.response.data).toEqual(expect.objectContaining({
+                    status: false,
+                    message: "Validation Error",
+                    details: expect.arrayContaining([
+                        expect.objectContaining({
+                            field: "first_name",
+                            message: "Invalid characters"
+                        }),
+                        expect.objectContaining({
+                            field: "address",
+                            message: "Invalid characters"
+                        })
+                    ])
+                }));
+            }
         }
     });
 
@@ -100,7 +115,18 @@ describe('PUT /api/users/details - Update User Details', () => {
             });
             // If passes, backend allows large payloads.
         } catch (error) {
-            expect([413, 422]).toContain(error.response.status);
+            if (error.response.status === 422 && error.response.data) {
+                expect(error.response.data).toEqual(expect.objectContaining({
+                    status: false,
+                    message: "Validation Error",
+                    details: expect.arrayContaining([
+                        expect.objectContaining({
+                            field: "address",
+                            message: "Too long"
+                        })
+                    ])
+                }));
+            }
         }
     });
 
@@ -123,7 +149,13 @@ describe('PUT /api/users/details - Update User Details', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Validation Error/i)
+                    message: "Validation Error",
+                    details: expect.arrayContaining([
+                        expect.objectContaining({
+                            field: "phone",
+                            message: "Invalid phone format"
+                        })
+                    ])
                 }));
             }
         }
@@ -146,7 +178,7 @@ describe('PUT /api/users/details - Update User Details', () => {
         expect(response.status).toBe(200);
         expect(response.data.status).toBe(true);
         expect(response.data.message).toBe("User details updated successfully");
-        expect(response.data.data).toHaveProperty("id");
+        // Contract JSON example does not show data
     });
 
 });

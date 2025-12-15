@@ -30,7 +30,7 @@ Retrieve all users (Admin/Manager role).
   ```json
   {
     "status": false,
-    "message": "Forbidden / Insufficient permissions"
+    "message": "Forbidden"
   }
   ```
   *(Status: 403 Forbidden)*
@@ -57,14 +57,22 @@ Retrieve all users (Admin/Manager role).
   {
     "status": true,
     "message": "Users retrieved successfully",
-    "data": [
-      {
-        "id": "uuid",
-        "username": "string",
-        "email": "string"
-        // Password/Sensitive fields MUST be missing
+    "data": {
+      "users": [
+        {
+          "id": "uuid",
+          "username": "string",
+          "email": "string"
+          // Password/Sensitive fields MUST be missing
+        }
+      ],
+      "pagination": {
+        "page": 1,
+        "limit": 10,
+        "total": 1,
+        "total_pages": 1
       }
-    ]
+    }
   }
   ```
   *(Status: 200)*

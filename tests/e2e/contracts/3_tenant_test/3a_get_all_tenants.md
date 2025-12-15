@@ -46,14 +46,22 @@ Retrieve all active tenants.
   {
     "status": true,
     "message": "Tenants retrieved successfully",
-    "data": [
-      {
-        "id": "uuid",
-        "name": "string",
-        "description": "string",
-        "is_active": true
+    "data": {
+      "tenants": [
+        {
+          "id": "uuid",
+          "name": "string",
+          "description": "string",
+          "is_active": true
+        }
+      ],
+      "pagination": {
+        "page": 1,
+        "limit": 10,
+        "total": 1,
+        "total_pages": 1
       }
-    ]
+    }
   }
   ```
   *(Status: 200)*

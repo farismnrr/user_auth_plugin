@@ -75,11 +75,15 @@ describe('GET /api/tenants - Get All Tenants', () => {
         expect(response.status).toBe(200);
         expect(response.data.status).toBe(true);
         expect(response.data.message).toBe("Tenants retrieved successfully");
-        expect(Array.isArray(response.data.data)).toBe(true);
-        if (response.data.data.length > 0) {
-            expect(response.data.data[0]).toHaveProperty("id");
-            expect(response.data.data[0]).toHaveProperty("name");
-            expect(response.data.data[0].is_active).toBe(true);
+        expect(response.data.data).toHaveProperty("tenants");
+        expect(Array.isArray(response.data.data.tenants)).toBe(true);
+        expect(response.data.data).toHaveProperty("pagination");
+
+        const tenants = response.data.data.tenants;
+        if (tenants.length > 0) {
+            expect(tenants[0]).toHaveProperty("id");
+            expect(tenants[0]).toHaveProperty("name");
+            expect(tenants[0].is_active).toBe(true);
         }
     });
 
@@ -98,7 +102,7 @@ describe('GET /api/tenants - Get All Tenants', () => {
             }
         });
 
-        const tenants = response.data.data;
+        const tenants = response.data.data.tenants;
         const inactiveTenants = tenants.filter(t => t.is_active === false);
         expect(inactiveTenants.length).toBe(0);
     });

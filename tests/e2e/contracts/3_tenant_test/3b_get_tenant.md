@@ -44,10 +44,10 @@ Retrieve a specific tenant by ID.
   ```json
   {
     "status": false,
-    "message": "Bad Request / Validation Error" // UUID parse error
+    "message": "Bad Request"
   }
   ```
-  *(Status: 400 or 404)*
+  *(Status: 400)*
 - **Side Effects**: None.
 
 ### 4. Get existing tenant
@@ -63,10 +63,12 @@ Retrieve a specific tenant by ID.
     "status": true,
     "message": "Tenant retrieved successfully",
     "data": {
-      "id": "<tenant_id>",
-      "name": "string",
-      "description": "string",
-      "is_active": true
+      "tenant": {
+        "id": "<tenant_id>",
+        "name": "string",
+        "description": "string",
+        "is_active": true
+      }
     }
   }
   ```

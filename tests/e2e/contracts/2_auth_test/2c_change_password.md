@@ -61,7 +61,13 @@ Change authenticated user's password.
   ```json
   {
     "status": false,
-    "message": "Validation Error"
+    "message": "Validation Error",
+    "details": [
+      {
+        "field": "confirm_new_password",
+        "message": "Passwords do not match"
+      }
+    ]
   }
   ```
   *(Status: 400 or 422)*
@@ -83,7 +89,13 @@ Change authenticated user's password.
   ```json
   {
     "status": false,
-    "message": "Validation Error (Weak password)"
+    "message": "Validation Error",
+    "details": [
+      {
+        "field": "new_password",
+        "message": "Password too weak"
+      }
+    ]
   }
   ```
   *(Status: 422)*
@@ -105,7 +117,13 @@ Change authenticated user's password.
   ```json
   {
     "status": false,
-    "message": "Bad Request / Validation Error"
+    "message": "Validation Error",
+    "details": [
+      {
+        "field": "new_password",
+        "message": "New password cannot be the same as old password"
+      }
+    ]
   }
   ```
   *(Status: 400 or 422)*

@@ -67,7 +67,7 @@ describe('GET /api/tenants/:id - Get Tenant by ID', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Tenant.*not found/i)
+                    message: "Tenant not found"
                 }));
             }
         }
@@ -84,11 +84,11 @@ describe('GET /api/tenants/:id - Get Tenant by ID', () => {
             });
             throw new Error('Should have failed');
         } catch (error) {
-            expect([400, 404]).toContain(error.response.status);
+            expect(error.response.status).toBe(400);
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Bad Request|Validation Error/i)
+                    message: "Bad Request"
                 }));
             }
         }
@@ -106,9 +106,10 @@ describe('GET /api/tenants/:id - Get Tenant by ID', () => {
         expect(response.status).toBe(200);
         expect(response.data.status).toBe(true);
         expect(response.data.message).toBe("Tenant retrieved successfully");
-        expect(response.data.data).toHaveProperty("id", validTenantId);
-        expect(response.data.data).toHaveProperty("name");
-        expect(response.data.data).toHaveProperty("is_active", true);
+        expect(response.data.data).toHaveProperty("tenant");
+        expect(response.data.data.tenant).toHaveProperty("id", validTenantId);
+        expect(response.data.data.tenant).toHaveProperty("name");
+        expect(response.data.data.tenant).toHaveProperty("is_active", true);
     });
 
 });

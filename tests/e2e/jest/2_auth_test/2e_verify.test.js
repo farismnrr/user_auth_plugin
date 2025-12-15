@@ -134,8 +134,8 @@ describe('GET /auth/verify - Verify Token', () => {
             expect([401, 404]).toContain(error.response.status);
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
-                    status: false, // Contract says status: false
-                    message: expect.stringMatching(/Not Found|Unauthorized/i)
+                    status: false,
+                    message: "Unauthorized" // Contract says Unauthorized
                 }));
             }
         }
@@ -153,7 +153,7 @@ describe('GET /auth/verify - Verify Token', () => {
         expect(response.status).toBe(200);
         expect(response.data.status).toBe(true);
         expect(response.data.message).toBe("Token is valid");
-        expect(response.data.data).toHaveProperty("user");
+        // Contract JSON example does not show data
     });
 
 });

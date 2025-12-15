@@ -79,7 +79,12 @@ Create a new tenant using tenant secret key (bootstrapping).
   {
     "status": false,
     "message": "Validation Error",
-    "details": ["..."]
+    "details": [
+      {
+        "field": "name",
+        "message": "Name cannot be empty"
+      }
+    ]
   }
   ```
 - **Side Effects**: None.
@@ -96,7 +101,13 @@ Create a new tenant using tenant secret key (bootstrapping).
   ```json
   {
     "status": false,
-    "message": "Validation Error"
+    "message": "Validation Error",
+    "details": [
+      {
+        "field": "name",
+        "message": "Name too long"
+      }
+    ]
   }
   ```
 - **Side Effects**: None.
@@ -113,7 +124,13 @@ Create a new tenant using tenant secret key (bootstrapping).
   ```json
   {
     "status": false,
-    "message": "Validation Error"
+    "message": "Validation Error",
+    "details": [
+      {
+        "field": "name",
+        "message": "Name cannot be empty"
+      }
+    ]
   }
   ```
 - **Side Effects**: None.
@@ -130,7 +147,13 @@ Create a new tenant using tenant secret key (bootstrapping).
   ```json
   {
     "status": false,
-    "message": "Validation Error"
+    "message": "Validation Error",
+    "details": [
+      {
+        "field": "name",
+        "message": "Invalid characters in name"
+      }
+    ]
   }
   ```
   *(Or 201 if sanitized)*
@@ -148,7 +171,13 @@ Create a new tenant using tenant secret key (bootstrapping).
   ```json
   {
     "status": false,
-    "message": "Validation Error"
+    "message": "Validation Error",
+    "details": [
+      {
+        "field": "name",
+        "message": "Invalid characters in name"
+      }
+    ]
   }
   ```
   *(Or 201 if handled safely)*
@@ -171,7 +200,7 @@ Create a new tenant using tenant secret key (bootstrapping).
   {
     "status": true,
     "message": "Tenant created successfully",
-    "data": { "id": "uuid" }
+    "data": { "tenant_id": "uuid" }
   }
   ```
 - **Side Effects**:
@@ -194,7 +223,7 @@ Create a new tenant using tenant secret key (bootstrapping).
   {
     "status": true,
     "message": "Tenant already exists",
-    "data": { "id": "uuid" }
+    "data": { "tenant_id": "uuid" }
   }
   ```
 - **Side Effects**: None (Idempotent return).

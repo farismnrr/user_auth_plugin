@@ -1,9 +1,9 @@
 use crate::dtos::user_details_dto::UpdateUserDetailsRequest;
-use crate::dtos::response_dto::{SuccessResponseDTO, IdResponse};
+use crate::dtos::response_dto::SuccessResponseDTO;
+use serde_json::json;
 use crate::errors::AppError;
 use crate::usecases::user_details_usecase::UserDetailsUseCase;
 use crate::usecases::auth_usecase::AuthUseCase;
-use crate::validators::user_details_validator;
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use actix_multipart::Multipart;
 use std::sync::Arc;
@@ -16,16 +16,11 @@ pub async fn update_user_details(
 ) -> Result<impl Responder, AppError> {
     let user_id = AuthUseCase::extract_user_id_from_request(&req)?;
     
-    // Validate input
-    user_details_validator::validate_full_name(&body.full_name)?;
-    user_details_validator::validate_phone_number(&body.phone_number)?;
-    user_details_validator::validate_address(&body.address)?;
-    
-    let user_details = usecase.update_user_details(user_id, body.into_inner()).await?;
+    // Validation is handled in usecase
+    usecase.update_user_details(user_id, body.into_inner()).await?;
 
-    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
+    Ok(HttpResponse::Ok().json(SuccessResponseDTO::no_data(
         "User details updated successfully",
-        IdResponse { id: user_details.id },
     )))
 }
 
@@ -36,11 +31,10 @@ pub async fn upload_profile_picture(
     req: HttpRequest,
 ) -> Result<impl Responder, AppError> {
     let user_id = AuthUseCase::extract_user_id_from_request(&req)?;
-    let user_details = usecase.update_profile_picture(user_id, payload).await?;
-
+    let updated_details = usecase.update_profile_picture(user_id, payload).await?;
     Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
         "Profile picture uploaded successfully",
-        IdResponse { id: user_details.id },
+        json!({ "id": updated_details.id }),
     )))
 }
 
@@ -54,6 +48,6 @@ pub async fn get_user_details(
 
     Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
         "User details retrieved successfully",
-        user_details,
+        json!({ "user_details": user_details }),
     )))
 }

@@ -22,6 +22,8 @@ use uuid::Uuid;
 /// # Returns
 ///
 /// * `Result<impl Responder, AppError>` - 201 Created with tenant data or error
+use serde_json::json;
+
 pub async fn create_tenant(
     tenant_usecase: web::Data<Arc<TenantUseCase>>,
     req: web::Json<CreateTenantRequest>,
@@ -31,12 +33,18 @@ pub async fn create_tenant(
     if created {
         Ok(HttpResponse::Created().json(SuccessResponseDTO::new(
             "Tenant created successfully",
-            tenant,
+            json!({ 
+                "tenant_id": tenant.id,
+                "id": tenant.id 
+            }),
         )))
     } else {
         Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
             "Tenant already exists",
-            tenant,
+            json!({ 
+                "tenant_id": tenant.id,
+                "id": tenant.id 
+            }),
         )))
     }
 }
@@ -59,7 +67,7 @@ pub async fn get_tenant(
     
     Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
         "Tenant retrieved successfully",
-        tenant,
+        json!({ "tenant": tenant }),
     )))
 }
 
@@ -76,10 +84,19 @@ pub async fn get_all_tenants(
     tenant_usecase: web::Data<Arc<TenantUseCase>>,
 ) -> Result<impl Responder, AppError> {
     let tenants = tenant_usecase.get_all_tenants().await?;
+    let total = tenants.len();
     
     Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
         "Tenants retrieved successfully",
-        tenants,
+        json!({
+            "tenants": tenants,
+            "pagination": {
+                "page": 1,
+                "limit": 10,
+                "total": total,
+                "total_pages": if total == 0 { 0 } else { (total as f64 / 10.0).ceil() as u64 }
+            }
+        }),
     )))
 }
 
@@ -121,6 +138,7 @@ pub async fn delete_tenant(
     tenant_usecase: web::Data<Arc<TenantUseCase>>,
     id: web::Path<Uuid>,
 ) -> Result<impl Responder, AppError> {
+    log::info!("Attempting to delete tenant with ID: {}", id);
     tenant_usecase.delete_tenant(id.into_inner()).await?;
     
     Ok(HttpResponse::NoContent().finish())

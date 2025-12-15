@@ -100,7 +100,7 @@ Soft delete a tenant (set `is_active` to false or separate deleted flag).
   {
     "status": true,
     "message": "Tenant created successfully",
-    "data": { "id": "uuid" }
+    "data": { "tenant_id": "uuid" }
   }
   ```
   *(Status: 201)*

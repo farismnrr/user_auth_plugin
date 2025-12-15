@@ -28,7 +28,7 @@ describe('POST /api/tenants - Create Tenant (Bootstrapping)', () => {
             expect(error.response.status).toBe(401);
             expect(error.response.data).toEqual(expect.objectContaining({
                 status: false,
-                message: "Unauthorized" // Or 'Invalid tenant secret key' if specific message returned
+                message: "Unauthorized"
             }));
         }
     });
@@ -76,7 +76,13 @@ describe('POST /api/tenants - Create Tenant (Bootstrapping)', () => {
             expect(error.response.status).toBe(422);
             expect(error.response.data).toEqual(expect.objectContaining({
                 status: false,
-                message: "Validation Error"
+                message: "Validation Error",
+                details: expect.arrayContaining([
+                    expect.objectContaining({
+                        field: "name",
+                        message: "Name cannot be empty"
+                    })
+                ])
             }));
         }
     });
@@ -93,7 +99,13 @@ describe('POST /api/tenants - Create Tenant (Bootstrapping)', () => {
             expect(error.response.status).toBe(422);
             expect(error.response.data).toEqual(expect.objectContaining({
                 status: false,
-                message: "Validation Error"
+                message: "Validation Error",
+                details: expect.arrayContaining([
+                    expect.objectContaining({
+                        field: "name",
+                        message: "Name too long"
+                    })
+                ])
             }));
         }
     });
@@ -109,26 +121,35 @@ describe('POST /api/tenants - Create Tenant (Bootstrapping)', () => {
             expect(error.response.status).toBe(422);
             expect(error.response.data).toEqual(expect.objectContaining({
                 status: false,
-                message: "Validation Error"
+                message: "Validation Error",
+                details: expect.arrayContaining([
+                    expect.objectContaining({
+                        field: "name",
+                        message: "Name cannot be empty"
+                    })
+                ])
             }));
         }
     });
 
     // 8. Validation: Invalid characters in name (422/Sanitized)
-    // Contract says: 422 OR 201 if sanitized. We need to handle both possibilities or match current strictness.
-    // Assuming strict 422 for now based on 'Expected Response' block in contract being 422.
     test('Scenario 8: Validation: Invalid characters in name', async () => {
         try {
             const res = await axios.post(`${BASE_URL}/api/tenants`, { name: "Tenant😳" }, {
                 headers: { 'X-Tenant-Secret-Key': TENANT_SECRET_KEY }
             });
-            // If sanitized, it passes with 200/201? Contract allows 201.
             expect([201, 200]).toContain(res.status);
         } catch (error) {
             expect(error.response.status).toBe(422);
             expect(error.response.data).toEqual(expect.objectContaining({
                 status: false,
-                message: "Validation Error"
+                message: "Validation Error",
+                details: expect.arrayContaining([
+                    expect.objectContaining({
+                        field: "name",
+                        message: "Invalid characters in name"
+                    })
+                ])
             }));
         }
     });
@@ -144,7 +165,13 @@ describe('POST /api/tenants - Create Tenant (Bootstrapping)', () => {
             expect(error.response.status).toBe(422);
             expect(error.response.data).toEqual(expect.objectContaining({
                 status: false,
-                message: "Validation Error"
+                message: "Validation Error",
+                details: expect.arrayContaining([
+                    expect.objectContaining({
+                        field: "name",
+                        message: "Invalid characters in name"
+                    })
+                ])
             }));
         }
     });
@@ -161,11 +188,11 @@ describe('POST /api/tenants - Create Tenant (Bootstrapping)', () => {
             headers: { 'X-Tenant-Secret-Key': TENANT_SECRET_KEY }
         });
 
-        expect(response.status).toBe(201); // Contract says 201
+        expect(response.status).toBe(201);
         expect(response.data.status).toBe(true);
         expect(response.data.message).toBe("Tenant created successfully");
-        expect(response.data.data).toHaveProperty("id");
-        createdTenantId = response.data.data.id;
+        expect(response.data.data).toHaveProperty("tenant_id");
+        createdTenantId = response.data.data.tenant_id;
     });
 
     // 11. Create tenant with duplicate name using secret key (200 OK - Idempotent)
@@ -177,11 +204,11 @@ describe('POST /api/tenants - Create Tenant (Bootstrapping)', () => {
             headers: { 'X-Tenant-Secret-Key': TENANT_SECRET_KEY }
         });
 
-        expect(response.status).toBe(200); // Contract says 200 OK
+        expect(response.status).toBe(200);
         expect(response.data.status).toBe(true);
         expect(response.data.message).toBe("Tenant already exists");
-        expect(response.data.data).toHaveProperty("id");
-        expect(response.data.data.id).toBe(createdTenantId);
+        expect(response.data.data).toHaveProperty("tenant_id");
+        expect(response.data.data.tenant_id).toBe(createdTenantId);
     });
 
 });

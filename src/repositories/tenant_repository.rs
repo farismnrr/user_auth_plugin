@@ -126,7 +126,7 @@ impl TenantRepositoryTrait for TenantRepository {
     async fn update(&self, id: Uuid, req: UpdateTenantRequest) -> Result<Tenant, AppError> {
         let existing = self.find_by_id(id).await?;
         if existing.is_none() {
-            return Err(AppError::NotFound(format!("Tenant with id {} not found", id)));
+            return Err(AppError::NotFound("Tenant not found".to_string()));
         }
 
         let mut tenant: tenant::ActiveModel = existing.unwrap().into();
@@ -160,7 +160,7 @@ impl TenantRepositoryTrait for TenantRepository {
     async fn delete(&self, id: Uuid) -> Result<(), AppError> {
         let existing = self.find_by_id(id).await?;
         if existing.is_none() {
-            return Err(AppError::NotFound(format!("Tenant with id {} not found", id)));
+            return Err(AppError::NotFound("Tenant not found".to_string()));
         }
 
         let mut tenant: tenant::ActiveModel = existing.unwrap().into();

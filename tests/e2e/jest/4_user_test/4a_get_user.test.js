@@ -75,10 +75,11 @@ describe('GET /api/users - Get Current User', () => {
         expect(response.status).toBe(200);
         expect(response.data.status).toBe(true);
         expect(response.data.message).toBe("User retrieved successfully");
-        expect(response.data.data).toHaveProperty("id"); // <user_a_id>
-        expect(response.data.data).toHaveProperty("username", testUser.username); // <user_a_name>
-        expect(response.data.data).toHaveProperty("email", testUser.email); // <user_a_email>
-        expect(response.data.data).toHaveProperty("role", "user");
+        expect(response.data.data).toHaveProperty("user");
+        expect(response.data.data.user).toHaveProperty("id");
+        expect(response.data.data.user).toHaveProperty("username", testUser.username);
+        expect(response.data.data.user).toHaveProperty("email", testUser.email);
+        expect(response.data.data.user).toHaveProperty("role", "user");
     });
 
     // 4. Verify password exclusion
@@ -92,7 +93,10 @@ describe('GET /api/users - Get Current User', () => {
 
         expect(response.status).toBe(200);
         expect(response.data.status).toBe(true);
-        expect(response.data.data).not.toHaveProperty("password");
+        expect(response.data.data).not.toHaveProperty("password"); // Check root data just in case
+        if (response.data.data.user) {
+            expect(response.data.data.user).not.toHaveProperty("password");
+        }
     });
 
 });

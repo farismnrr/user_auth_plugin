@@ -121,6 +121,14 @@ Upload a profile picture for the current user.
     - `file`: [Corrupted/DoS Image Binary]
 - **Expected Response**:
   - 400 Bad Request or 422 Unprocessable Entity.
+  - If 422:
+    ```json
+    {
+      "status": false,
+      "message": "Validation Error",
+      "details": [{ "field": "file", "message": "Malformed image data" }]
+    }
+    ```
 - **Side Effects**: None.
 
 ### 9. Upload valid profile picture

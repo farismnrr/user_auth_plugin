@@ -9,7 +9,9 @@ use uuid::Uuid;
 pub struct UserDetailsResponse {
     pub id: Uuid,
     pub user_id: Uuid,
-    pub full_name: Option<String>,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    #[serde(rename = "phone")]
     pub phone_number: Option<String>,
     pub address: Option<String>,
     pub date_of_birth: Option<NaiveDate>,
@@ -23,7 +25,9 @@ pub struct UserDetailsResponse {
 /// All fields are optional. Profile picture is excluded and updated via separate endpoint.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpdateUserDetailsRequest {
-    pub full_name: Option<String>,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    #[serde(rename = "phone")]
     pub phone_number: Option<String>,
     pub address: Option<String>,
     pub date_of_birth: Option<NaiveDate>,

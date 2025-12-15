@@ -34,6 +34,17 @@ Update current user's extended details.
   ```
 - **Expected Response**:
   - 422 Validation Error (Preferred)
+  - Details:
+    ```json
+    {
+      "status": false,
+      "message": "Validation Error",
+      "details": [
+        { "field": "first_name", "message": "Invalid characters" },
+        { "field": "address", "message": "Invalid characters" }
+      ]
+    }
+    ```
   - OR 200 OK with sanitized/escaped output.
 - **Side Effects**: None or sanitized.
 
@@ -50,6 +61,14 @@ Update current user's extended details.
 - **Expected Response**:
   - 200 OK (Data treated as literal string)
   - OR 422 Validation Error.
+  - Details:
+    ```json
+    {
+      "status": false,
+      "message": "Validation Error",
+      "details": [{ "field": "last_name", "message": "Invalid characters" }]
+    }
+    ```
   - **Critical**: Must NOT execute SQL.
 - **Side Effects**: None.
 
@@ -63,6 +82,10 @@ Update current user's extended details.
   ```
 - **Expected Response**:
   - 413 Payload Too Large or 422 Validation Error.
+  - If 422:
+    ```json
+    { "status": false, "message": "Validation Error", "details": [{"field":"address","message":"Too long"}] }
+    ```
 - **Side Effects**: None.
 
 ### 5. Update with invalid phone format
@@ -77,7 +100,13 @@ Update current user's extended details.
   ```json
   {
     "status": false,
-    "message": "Validation Error"
+    "message": "Validation Error",
+    "details": [
+      {
+        "field": "phone",
+        "message": "Invalid phone format"
+      }
+    ]
   }
   ```
   *(Status: 400 or 422 - if validation exists)*
@@ -101,8 +130,7 @@ Update current user's extended details.
   ```json
   {
     "status": true,
-    "message": "User details updated successfully",
-    "data": { "id": "uuid" }
+    "message": "User details updated successfully"
   }
   ```
   *(Status: 200)*

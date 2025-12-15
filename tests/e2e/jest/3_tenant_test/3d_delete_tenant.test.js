@@ -68,7 +68,7 @@ describe('DELETE /api/tenants/:id - Delete Tenant', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Tenant.*not found/i)
+                    message: "Tenant not found"
                 }));
             }
         }
@@ -102,7 +102,7 @@ describe('DELETE /api/tenants/:id - Delete Tenant', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Tenant.*not found/i)
+                    message: "Tenant not found"
                 }));
             }
         }
@@ -140,7 +140,7 @@ describe('DELETE /api/tenants/:id - Delete Tenant', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Tenant.*not found/i)
+                    message: "Tenant not found"
                 }));
             }
         }
@@ -158,7 +158,7 @@ describe('DELETE /api/tenants/:id - Delete Tenant', () => {
         expect(response.status).toBe(201);
         expect(response.data.status).toBe(true);
         expect(response.data.message).toBe("Tenant created successfully");
-        expect(response.data.data).toHaveProperty("id");
+        expect(response.data.data).toHaveProperty("tenant_id");
     });
 
 });

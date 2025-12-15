@@ -59,7 +59,7 @@ Verify JWT token and return user data.
   ```json
   {
     "status": false,
-    "message": "Unauthorized"
+    "message": "Token expired"
   }
   ```
   *(Status: 401)*
@@ -78,7 +78,7 @@ Verify JWT token and return user data.
 - **Method**: `GET`
 - **Pre-conditions**: Token for Tenant A, request to Tenant B.
 - **Request Body**: None.
-- **Expected Response**: Status 401 or 403.
+- **Expected Response**: Status 403 Forbidden.
 - **Side Effects**: None.
 
 ### 7. User deleted but token still valid
@@ -90,10 +90,10 @@ Verify JWT token and return user data.
   ```json
   {
     "status": false,
-    "message": "Not Found" // or Unauthorized
+    "message": "Unauthorized"
   }
   ```
-  *(Status: 404 or 401)*
+  *(Status: 401)*
 - **Side Effects**: None.
 
 ### 8. Successful verification
@@ -106,8 +106,7 @@ Verify JWT token and return user data.
   ```json
   {
     "status": true,
-    "message": "Token is valid",
-    "data": { "user": { ... } }
+    "message": "Token is valid"
   }
   ```
   *(Status: 200)*

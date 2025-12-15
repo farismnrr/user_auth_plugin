@@ -33,11 +33,13 @@ Retrieve current user's extended details.
     "status": true,
     "message": "User details retrieved successfully",
     "data": {
-      "first_name": "string",
-      "last_name": "string",
-      "phone": "string",
-      "address": "string",
-      "profile_picture_url": "string"
+      "user_details": {
+        "first_name": "string",
+        "last_name": "string",
+        "phone": "string",
+        "address": "string",
+        "profile_picture_url": "string"
+      }
     }
   }
   ```
@@ -54,8 +56,10 @@ Retrieve current user's extended details.
   {
     "status": true,
     "data": {
-      "first_name": null,
-      ...
+      "user_details": {
+        "first_name": null,
+        ...
+      }
     }
   }
   ```

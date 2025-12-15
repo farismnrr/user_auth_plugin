@@ -41,7 +41,7 @@ describe('GET /auth/refresh - Refresh Token', () => {
             expect(error.response.status).toBe(401);
             expect(error.response.data).toEqual(expect.objectContaining({
                 status: false,
-                message: expect.stringMatching(/Unauthorized|Refresh token/i)
+                message: "Unauthorized"
             }));
         }
     });
@@ -60,7 +60,7 @@ describe('GET /auth/refresh - Refresh Token', () => {
             expect(error.response.status).toBe(401);
             expect(error.response.data).toEqual(expect.objectContaining({
                 status: false,
-                message: expect.stringMatching(/Unauthorized|Refresh token|Invalid/i)
+                message: "Unauthorized"
             }));
         }
     });
@@ -118,8 +118,9 @@ describe('GET /auth/refresh - Refresh Token', () => {
         let reuseCookie = '';
         try {
             // 1. Get new token
-            const r = await axios.post(`${BASE_URL}/auth/register`, { ...testUser, username: 'reuse_' + Date.now(), email: 'reuse_' + Date.now() + '@x.com' }, { headers: { 'X-API-Key': API_KEY } });
-            const l = await axios.post(`${BASE_URL}/auth/login`, { email_or_username: 'reuse_' + Date.now() + '@x.com', password: testUser.password }, { headers: { 'X-API-Key': API_KEY } });
+            const timestamp = Date.now();
+            const r = await axios.post(`${BASE_URL}/auth/register`, { ...testUser, username: 'reuse_' + timestamp, email: 'reuse_' + timestamp + '@x.com' }, { headers: { 'X-API-Key': API_KEY } });
+            const l = await axios.post(`${BASE_URL}/auth/login`, { email_or_username: 'reuse_' + timestamp + '@x.com', password: testUser.password }, { headers: { 'X-API-Key': API_KEY } });
             const reuseRawCookie = l.headers['set-cookie'][0];
             reuseCookie = reuseRawCookie.split(';')[0];
 
@@ -153,7 +154,7 @@ describe('GET /auth/refresh - Refresh Token', () => {
             const token = l.data.data?.access_token || l.data.result?.access_token;
 
             // Delete user
-            await axios.delete(`${BASE_URL}/users`, {
+            await axios.delete(`${BASE_URL}/api/users`, {
                 headers: { 'X-API-Key': API_KEY, 'Authorization': `Bearer ${token}` }
             });
 
@@ -162,13 +163,11 @@ describe('GET /auth/refresh - Refresh Token', () => {
 
             throw new Error('Should have failed');
         } catch (error) {
-            expect([401, 403, 404]).toContain(error.response.status); // 404 if user not found
-            if (error.response.status !== 404) {
-                expect(error.response.data).toEqual(expect.objectContaining({
-                    status: false,
-                    message: expect.stringMatching(/Unauthorized|Forbidden|User|Account/i)
-                }));
-            }
+            expect(error.response.status).toBe(401);
+            expect(error.response.data).toEqual(expect.objectContaining({
+                status: false,
+                message: "Unauthorized"
+            }));
         }
     });
 

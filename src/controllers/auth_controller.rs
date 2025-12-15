@@ -68,7 +68,7 @@ pub async fn login(
         .ok_or_else(|| AppError::Unauthorized("Tenant ID not found in request context".to_string()))?;
 
     let login_req = LoginRequest {
-        email_or_username: body.email_or_username.trim().to_string(),
+        email_or_username: body.email_or_username.to_string(),
         password: body.password.clone(),
         tenant_id,
     };
@@ -128,9 +128,22 @@ pub async fn refresh(
     usecase: web::Data<Arc<AuthUseCase>>,
     req: actix_web::HttpRequest,
 ) -> Result<impl Responder, AppError> {
-    let new_access_token = usecase.refresh_token_from_request(&req).await?;
+    let (new_access_token, new_refresh_token) = usecase.refresh_token_from_request(&req).await?;
 
-    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
+    let refresh_token_expiry = usecase.get_refresh_token_expiry();
+    let cookie = Cookie::build("refresh_token", new_refresh_token)
+        .path("/")
+        .http_only(true)
+        .secure(false) // TODO: Set to true in production
+        .same_site(SameSite::Strict)
+        .max_age(actix_web::cookie::time::Duration::seconds(
+            refresh_token_expiry,
+        ))
+        .finish();
+
+    Ok(HttpResponse::Ok()
+        .cookie(cookie)
+        .json(SuccessResponseDTO::new(
         "Token refreshed successfully",
         serde_json::json!({
             "access_token": new_access_token

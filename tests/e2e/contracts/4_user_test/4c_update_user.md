@@ -32,7 +32,13 @@ Update current user's core profile information.
   ```json
   {
     "status": false,
-    "message": "Validation Error"
+    "message": "Validation Error",
+    "details": [
+      {
+        "field": "username",
+        "message": "Username too short"
+      }
+    ]
   }
   ```
   *(Status: 400 or 422)*
@@ -83,6 +89,14 @@ Update current user's core profile information.
   ```
 - **Expected Response**:
   - Status 422 (Validation Error) OR 200 with sanitized output.
+  - If 422:
+    ```json
+    {
+      "status": false,
+      "message": "Validation Error",
+      "details": [{ "field": "username", "message": "Invalid characters" }]
+    }
+    ```
 - **Side Effects**: None or sanitized.
 
 ### 6. Update current user (Username/Email)
@@ -101,10 +115,7 @@ Update current user's core profile information.
   ```json
   {
     "status": true,
-    "message": "User updated successfully",
-    "data": {
-       "id": "uuid" // Returns ID only
-    }
+    "message": "User updated successfully"
   }
   ```
   *(Status: 200)*

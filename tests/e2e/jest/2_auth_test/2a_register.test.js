@@ -129,9 +129,10 @@ describe('POST /auth/register - Register User', () => {
             }, { headers: { 'X-API-Key': API_KEY } });
             throw new Error('Should have failed');
         } catch (error) {
-            expect([400, 409, 422, 500]).toContain(error.response.status); // Allow 422 for validation, 409/500 if DB constraint fails
+            expect(error.response.status).toBe(400); // Contract says 400
             expect(error.response.data).toEqual(expect.objectContaining({
-                status: false
+                status: false,
+                message: "Bad Request"
             }));
         }
     });
@@ -147,11 +148,16 @@ describe('POST /auth/register - Register User', () => {
             }, { headers: { 'X-API-Key': API_KEY } });
             throw new Error('Should have failed');
         } catch (error) {
-            // Contract says 422
-            expect([409, 422]).toContain(error.response.status);
+            expect(error.response.status).toBe(422);
             expect(error.response.data).toEqual(expect.objectContaining({
                 status: false,
-                message: expect.stringMatching(/Validation Error/i)
+                message: "Validation Error",
+                details: expect.arrayContaining([
+                    expect.objectContaining({
+                        field: "password",
+                        message: "Password too long"
+                    })
+                ])
             }));
         }
     });

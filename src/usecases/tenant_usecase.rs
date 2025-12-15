@@ -1,5 +1,5 @@
 use crate::dtos::tenant_dto::{CreateTenantRequest, TenantResponse, UpdateTenantRequest};
-use crate::errors::AppError;
+use crate::errors::{AppError, ValidationDetail};
 use crate::repositories::tenant_repository::TenantRepositoryTrait;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -36,8 +36,24 @@ impl TenantUseCase {
     /// * `Result<(TenantResponse, bool), AppError>` - (Tenant data, created_flag)
     pub async fn create_tenant(&self, req: CreateTenantRequest) -> Result<(TenantResponse, bool), AppError> {
         // Validate name length
-        if req.name.is_empty() || req.name.len() > 255 {
-            return Err(AppError::ValidationError("Validation Error".to_string()));
+        if req.name.is_empty() {
+            return Err(AppError::ValidationError(
+                "Validation Error".to_string(),
+                Some(vec![ValidationDetail {
+                    field: "name".to_string(),
+                    message: "Name cannot be empty".to_string(),
+                }]),
+            ));
+        }
+        
+        if req.name.len() > 255 {
+            return Err(AppError::ValidationError(
+                "Validation Error".to_string(),
+                Some(vec![ValidationDetail {
+                    field: "name".to_string(),
+                    message: "Name too long".to_string(),
+                }]),
+            ));
         }
 
         // Check if tenant name already exists (including deleted)
@@ -98,7 +114,7 @@ impl TenantUseCase {
             .tenant_repo
             .find_by_id(id)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("Tenant with id {} not found", id)))?;
+            .ok_or_else(|| AppError::NotFound("Tenant not found".to_string()))?;
 
         Ok(TenantResponse::from(tenant))
     }
@@ -130,8 +146,23 @@ impl TenantUseCase {
     ) -> Result<TenantResponse, AppError> {
         // Validate name length if provided
         if let Some(ref name) = req.name {
-            if name.is_empty() || name.len() > 255 {
-                return Err(AppError::ValidationError("Validation Error".to_string()));
+            if name.is_empty() {
+                return Err(AppError::ValidationError(
+                    "Validation Error".to_string(),
+                    Some(vec![ValidationDetail {
+                        field: "name".to_string(),
+                        message: "Name cannot be empty".to_string(),
+                    }]),
+                ));
+            }
+            if name.len() > 255 {
+                return Err(AppError::ValidationError(
+                    "Validation Error".to_string(),
+                    Some(vec![ValidationDetail {
+                        field: "name".to_string(),
+                        message: "Name too long".to_string(),
+                    }]),
+                ));
             }
         }
 

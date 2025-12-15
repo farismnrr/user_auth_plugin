@@ -41,10 +41,10 @@ Authenticate user and receive access token.
   ```json
   {
     "status": false,
-    "message": "Forbidden" // or Unauthorized
+    "message": "Forbidden"
   }
   ```
-  *(Status: 403 or 401)*
+  *(Status: 403)*
 - **Side Effects**: None.
 
 ### 3. Missing credentials
@@ -83,7 +83,7 @@ Authenticate user and receive access token.
   ```json
   {
     "status": false,
-    "message": "Unauthorized"
+    "message": "username or email or password invalid"
   }
   ```
   *(Status: 401)*
@@ -105,13 +105,34 @@ Authenticate user and receive access token.
   ```json
   {
     "status": false,
-    "message": "Unauthorized"
+    "message": "username or email or password invalid"
   }
   ```
   *(Status: 401)*
 - **Side Effects**: None.
 
-### 6. Non-existent user
+### 6. Invalid Input: Leading/trailing spaces in credentials
+- **URL**: `http://localhost:5500/auth/login`
+- **Method**: `POST`
+- **Pre-conditions**: None.
+- **Request Body**:
+  ```json
+  {
+    "email_or_username": "  user  ",
+    "password": "..."
+  }
+  ```
+- **Expected Response**:
+  ```json
+  {
+    "status": false,
+    "message": "username or email or password invalid"
+  }
+  ```
+  *(Status: 401)*
+- **Side Effects**: None.
+
+### 7. Non-existent user
 - **URL**: `http://localhost:5500/auth/login`
 - **Method**: `POST`
 - **Pre-conditions**: None.
@@ -126,13 +147,13 @@ Authenticate user and receive access token.
   ```json
   {
     "status": false,
-    "message": "Unauthorized" // or Not Found
+    "message": "username or email or password invalid"
   }
   ```
-  *(Status: 401 or 404)*
+  *(Status: 401)*
 - **Side Effects**: None.
 
-### 7. Security: Brute force protection check
+### 8. Security: Brute force protection check
 - **URL**: `http://localhost:5500/auth/login`
 - **Method**: `POST`
 - **Pre-conditions**: Repeated failed attempts.
@@ -153,7 +174,7 @@ Authenticate user and receive access token.
   *(Status: 429)*
 - **Side Effects**: None.
 
-### 8. Successful login with email
+### 9. Successful login with email
 - **URL**: `http://localhost:5500/auth/login`
 - **Method**: `POST`
 - **Pre-conditions**:
@@ -178,7 +199,7 @@ Authenticate user and receive access token.
   - Refresh token cookie set.
   - Session created.
 
-### 9. Successful login with username
+### 10. Successful login with username
 - **URL**: `http://localhost:5500/auth/login`
 - **Method**: `POST`
 - **Pre-conditions**:
@@ -194,24 +215,11 @@ Authenticate user and receive access token.
   ```json
   {
     "status": true,
-    "message": "Login successful"
+    "message": "Login successful",
+    "data": { "access_token": "..." }
   }
   ```
   *(Status: 200)*
 - **Side Effects**:
   - Refresh token cookie set.
   - Session created.
-
-### 10. Usability: Input trimming
-- **URL**: `http://localhost:5500/auth/login`
-- **Method**: `POST`
-- **Pre-conditions**: None.
-- **Request Body**:
-  ```json
-  {
-    "email_or_username": "  user  ",
-    "password": "..."
-  }
-  ```
-- **Expected Response**: Success (200).
-- **Side Effects**: Session created.

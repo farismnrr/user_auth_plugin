@@ -75,7 +75,7 @@ describe('PUT /api/tenants/:id - Update Tenant', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Tenant.*not found/i)
+                    message: "Tenant not found"
                 }));
             }
         }
@@ -98,8 +98,7 @@ describe('PUT /api/tenants/:id - Update Tenant', () => {
         expect(response.status).toBe(200);
         expect(response.data.status).toBe(true);
         expect(response.data.message).toBe("Tenant updated successfully");
-        expect(response.data.data).toHaveProperty("id", tenantId);
-        expect(response.data.data).toHaveProperty("name", newName);
+        // Contract does not specify data return
     });
 
     // 4. Partial Update (Description only)
@@ -116,7 +115,7 @@ describe('PUT /api/tenants/:id - Update Tenant', () => {
         expect(response.status).toBe(200);
         expect(response.data.status).toBe(true);
         expect(response.data.message).toBe("Tenant updated successfully");
-        expect(response.data.data).toHaveProperty("description", "Only description updated");
+        // Contract does not specify data return
     });
 
     // 5. Update with duplicate name
@@ -136,7 +135,7 @@ describe('PUT /api/tenants/:id - Update Tenant', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Tenant name already exists/i)
+                    message: "Tenant name already exists"
                 }));
             }
         }

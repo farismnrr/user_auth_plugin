@@ -61,7 +61,7 @@ describe('PATCH /api/users/uploads - Upload Profile Picture', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Missing file|Bad Request|Multipart stream/i)
+                    message: "Bad Request / Missing file" // Contract: Bad Request / Missing file
                 }));
             }
         }
@@ -86,7 +86,7 @@ describe('PATCH /api/users/uploads - Upload Profile Picture', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Invalid file type/i)
+                    message: "Invalid file type. Only images allowed."
                 }));
             }
         }
@@ -123,7 +123,7 @@ describe('PATCH /api/users/uploads - Upload Profile Picture', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: expect.stringMatching(/Invalid file (extension|type)/i)
+                    message: "Invalid file extension"
                 }));
             }
         }
@@ -191,6 +191,18 @@ describe('PATCH /api/users/uploads - Upload Profile Picture', () => {
             // If backend doesn't validate image content, it might 200 (but contract asks for 400/422).
         } catch (error) {
             expect([400, 422]).toContain(error.response.status);
+            if (error.response.status === 422 && error.response.data) {
+                expect(error.response.data).toEqual(expect.objectContaining({
+                    status: false,
+                    message: "Validation Error",
+                    details: expect.arrayContaining([
+                        expect.objectContaining({
+                            field: "file",
+                            message: "Malformed image data"
+                        })
+                    ])
+                }));
+            }
         }
     });
 

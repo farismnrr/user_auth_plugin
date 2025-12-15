@@ -30,8 +30,7 @@ Delete current user account (Self-deletion).
   ```json
   {
     "status": true,
-    "message": "User deleted successfully",
-    "data": { "id": "uuid" }
+    "message": "User deleted successfully"
   }
   ```
   *(Status: 200)*

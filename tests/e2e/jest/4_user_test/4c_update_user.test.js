@@ -60,8 +60,13 @@ describe('PUT /api/users - Update Current User', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    // Accepts specific message or generic Validation Error
-                    message: expect.stringMatching(/(Validation Error|Username must be at least)/i)
+                    message: "Validation Error",
+                    details: expect.arrayContaining([
+                        expect.objectContaining({
+                            field: "username",
+                            message: "Username too short"
+                        })
+                    ])
                 }));
             }
         }
@@ -86,8 +91,8 @@ describe('PUT /api/users - Update Current User', () => {
                 'Authorization': `Bearer ${authToken}`
             }
         });
-        expect(getRes.data.data.username).toBe(username);
-        expect(getRes.data.data.role).toBe("user"); // Must remain user
+        expect(getRes.data.data.user.username).toBe(username);
+        expect(getRes.data.data.user.role).toBe("user"); // Must remain user
     });
 
     // 4. Security: ID Injection (Resource Hijacking)
@@ -107,8 +112,8 @@ describe('PUT /api/users - Update Current User', () => {
             const getRes = await axios.get(`${BASE_URL}/api/users`, {
                 headers: { 'X-API-Key': API_KEY, 'Authorization': `Bearer ${authToken}` }
             });
-            expect(getRes.data.data.id).not.toBe("00000000-0000-0000-0000-000000000000");
-            expect(getRes.data.data.username).toBe(username);
+            expect(getRes.data.data.user.id).not.toBe("00000000-0000-0000-0000-000000000000");
+            expect(getRes.data.data.user.username).toBe(username);
 
         } catch (error) {
             expect([400, 422]).toContain(error.response.status);
@@ -129,6 +134,18 @@ describe('PUT /api/users - Update Current User', () => {
             // If success (sanitized), fine.
         } catch (error) {
             expect(error.response.status).toBe(422);
+            if (error.response.data && error.response.data !== "") {
+                expect(error.response.data).toEqual(expect.objectContaining({
+                    status: false,
+                    message: "Validation Error",
+                    details: expect.arrayContaining([
+                        expect.objectContaining({
+                            field: "username",
+                            message: "Invalid characters"
+                        })
+                    ])
+                }));
+            }
         }
     });
 
