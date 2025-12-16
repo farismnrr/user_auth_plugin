@@ -4,4 +4,5 @@
 //! including database connection management and health monitoring.
 
 pub mod postgres_connection;
+pub mod sqlite_connection;
 pub mod cache;

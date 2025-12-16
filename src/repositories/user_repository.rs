@@ -72,15 +72,19 @@ impl UserRepositoryTrait for UserRepository {
             username: Set(req.username.clone()),
             email: Set(req.email.clone()),
             password_hash: Set(password_hash),
+            created_at: Set(chrono::Utc::now().into()),
+            updated_at: Set(chrono::Utc::now().into()),
+            deleted_at: Set(None),
             ..Default::default()
         };
 
-        let result = UserEntity::insert(user)
-            .exec_with_returning(&*self.db)
+        let result = UserEntity::insert(user.clone())
+            .exec(&*self.db)
             .await
             .map_err(|e| match e {
-                DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) => {
-                    if db_err.message().contains("duplicate") || db_err.message().contains("unique") {
+                DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) | DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) => {
+                    let msg = db_err.message().to_lowercase();
+                    if msg.contains("duplicate") || msg.contains("unique") {
                         AppError::Conflict("Username or email already exists".to_string())
                     } else {
                         AppError::DatabaseError(db_err.to_string())
@@ -89,7 +93,7 @@ impl UserRepositoryTrait for UserRepository {
                 _ => AppError::DatabaseError(e.to_string()),
             })?;
 
-        Ok(result)
+        Ok(user.try_into_model().unwrap())
     }
 
     async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, AppError> {
@@ -172,8 +176,9 @@ impl UserRepositoryTrait for UserRepository {
             .update(&*self.db)
             .await
             .map_err(|e| match e {
-                DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) => {
-                    if db_err.message().contains("duplicate") || db_err.message().contains("unique") {
+                DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) | DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) => {
+                    let msg = db_err.message().to_lowercase();
+                    if msg.contains("duplicate") || msg.contains("unique") {
                         AppError::Conflict("Username or email already exists".to_string())
                     } else {
                         AppError::DatabaseError(db_err.to_string())

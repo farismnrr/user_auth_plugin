@@ -32,6 +32,8 @@ impl UserTenantRepositoryTrait for UserTenantRepository {
             user_id: Set(user_id),
             tenant_id: Set(tenant_id),
             role: Set(role),
+            created_at: Set(chrono::Utc::now().into()),
+            updated_at: Set(chrono::Utc::now().into()),
             ..Default::default()
         };
 

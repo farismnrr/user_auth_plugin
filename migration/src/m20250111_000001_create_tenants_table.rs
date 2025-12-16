@@ -20,8 +20,7 @@ impl MigrationTrait for Migration {
                         ColumnDef::new(Tenants::Id)
                             .uuid()
                             .not_null()
-                            .primary_key()
-                            .extra("DEFAULT gen_random_uuid()".to_string()),
+                            .primary_key(),
                     )
                     .col(
                         ColumnDef::new(Tenants::Name)
@@ -30,10 +29,12 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .unique_key(),
                     )
+                    .col(ColumnDef::new(Tenants::Description).text().null())
                     .col(
-                        ColumnDef::new(Tenants::Description)
-                            .text()
-                            .null(),
+                        ColumnDef::new(Tenants::Status)
+                            .string()
+                            .not_null()
+                            .default("active"),
                     )
                     .col(
                         ColumnDef::new(Tenants::DeletedAt)
@@ -43,14 +44,12 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(Tenants::CreatedAt)
                             .timestamp_with_time_zone()
-                            .not_null()
-                            .extra("DEFAULT NOW()".to_string()),
+                            .not_null(),
                     )
                     .col(
                         ColumnDef::new(Tenants::UpdatedAt)
                             .timestamp_with_time_zone()
-                            .not_null()
-                            .extra("DEFAULT NOW()".to_string()),
+                            .not_null(),
                     )
                     .to_owned(),
             )
@@ -71,6 +70,7 @@ enum Tenants {
     Id,
     Name,
     Description,
+    Status,
     DeletedAt,
     CreatedAt,
     UpdatedAt,

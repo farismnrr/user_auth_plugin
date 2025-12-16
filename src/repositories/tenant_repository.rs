@@ -64,15 +64,19 @@ impl TenantRepositoryTrait for TenantRepository {
             id: Set(Uuid::new_v4()),  // Generate UUID in repository
             name: Set(req.name.clone()),
             description: Set(req.description.clone()),
+            created_at: Set(chrono::Utc::now().into()),
+            updated_at: Set(chrono::Utc::now().into()),
+            deleted_at: Set(None),
             ..Default::default()
         };
 
-        let result = TenantEntity::insert(tenant)
-            .exec_with_returning(&*self.db)
+        let result = TenantEntity::insert(tenant.clone())
+            .exec(&*self.db)
             .await
             .map_err(|e| match e {
-                DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) => {
-                    if db_err.message().contains("duplicate") || db_err.message().contains("unique") {
+                DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) | DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) => {
+                    let msg = db_err.message().to_lowercase();
+                    if msg.contains("duplicate") || msg.contains("unique") {
                         AppError::Conflict("Tenant name already exists".to_string())
                     } else {
                         AppError::DatabaseError(db_err.to_string())
@@ -81,7 +85,7 @@ impl TenantRepositoryTrait for TenantRepository {
                 _ => AppError::DatabaseError(e.to_string()),
             })?;
 
-        Ok(result)
+        Ok(tenant.try_into_model().unwrap())
     }
 
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Tenant>, AppError> {
@@ -165,8 +169,9 @@ impl TenantRepositoryTrait for TenantRepository {
             .update(&*self.db)
             .await
             .map_err(|e| match e {
-                DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) => {
-                    if db_err.message().contains("duplicate") || db_err.message().contains("unique") {
+                DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) | DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) => {
+                    let msg = db_err.message().to_lowercase();
+                    if msg.contains("duplicate") || msg.contains("unique") {
                         AppError::Conflict("Tenant name already exists".to_string())
                     } else {
                         AppError::DatabaseError(db_err.to_string())

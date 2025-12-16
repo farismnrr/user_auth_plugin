@@ -22,8 +22,7 @@ impl MigrationTrait for Migration {
                         ColumnDef::new(UserActivityLogs::Id)
                             .uuid()
                             .not_null()
-                            .primary_key()
-                            .extra("DEFAULT gen_random_uuid()".to_string()),
+                            .primary_key(),
                     )
                     .col(
                         ColumnDef::new(UserActivityLogs::UserId)
@@ -62,8 +61,7 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(UserActivityLogs::CreatedAt)
                             .timestamp_with_time_zone()
-                            .not_null()
-                            .extra("DEFAULT NOW()".to_string()),
+                            .not_null(),
                     )
                     .foreign_key(
                         ForeignKey::create()

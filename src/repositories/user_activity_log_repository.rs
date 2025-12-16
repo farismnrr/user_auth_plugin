@@ -62,14 +62,15 @@ impl UserActivityLogRepositoryTrait for UserActivityLogRepository {
             error_message: Set(error_message),
             ip_address: Set(ip_address),
             user_agent: Set(user_agent),
+            created_at: Set(chrono::Utc::now().into()),
             ..Default::default()
         };
 
-        let result = UserActivityLogEntity::insert(log)
-            .exec_with_returning(&*self.db)
+        let result = UserActivityLogEntity::insert(log.clone())
+            .exec(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
-        Ok(result)
+        Ok(log.try_into_model().unwrap())
     }
 }

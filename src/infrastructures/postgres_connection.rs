@@ -21,7 +21,7 @@ use tokio::sync::watch;
 /// - `CORE_DB_PORT`: Database port (default: "5432")
 /// - `CORE_DB_USER`: Database user (default: "postgres")
 /// - `CORE_DB_PASS`: Database password (default: "postgres")
-/// - `CORE_DB_NAME`: Database name (default: "user_auth_plugin_dev")
+/// - `CORE_DB_NAME`: Database name (default: "user_auth_plugin")
 ///
 /// # Errors
 ///
@@ -33,7 +33,7 @@ pub async fn initialize() -> anyhow::Result<Arc<DatabaseConnection>> {
     let port = std::env::var("CORE_DB_PORT").unwrap_or_else(|_| "5432".to_string());
     let user = std::env::var("CORE_DB_USER").unwrap_or_else(|_| "postgres".to_string());
     let pass = std::env::var("CORE_DB_PASS").unwrap_or_else(|_| "postgres".to_string());
-    let name = std::env::var("CORE_DB_NAME").unwrap_or_else(|_| "user_auth_plugin_dev".to_string());
+    let name = std::env::var("CORE_DB_NAME").unwrap_or_else(|_| "user_auth_plugin".to_string());
 
     log::info!("Connecting to Postgres at {}:{}/{}", host, port, name);
     

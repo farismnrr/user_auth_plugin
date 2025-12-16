@@ -36,7 +36,7 @@ help:
 dev:
 	@echo "🚀 Starting development server with hot reload..."
 	@echo "💡 Tip: Install cargo-watch with 'make install-watch' if not installed"
-	@cargo watch -x run || (echo "❌ cargo-watch not found. Installing..." && cargo install cargo-watch && cargo watch -x run)
+	@cargo watch -i "*.sqlite*" -i "*.db*" -i "rocksdb_cache" -x run || (echo "❌ cargo-watch not found. Installing..." && cargo install cargo-watch && cargo watch -i "*.sqlite*" -i "*.db*" -i "rocksdb_cache" -x run)
 
 # Run development server without hot reload
 start:

@@ -70,15 +70,16 @@ impl UserSessionRepositoryTrait for UserSessionRepository {
             user_agent: Set(user_agent),
             ip_address: Set(ip_address),
             expires_at: Set(expires_at),
+            created_at: Set(Utc::now().into()),
             ..Default::default()
         };
 
-        let result = UserSessionEntity::insert(session)
-            .exec_with_returning(&*self.db)
+        let result = UserSessionEntity::insert(session.clone())
+            .exec(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
-        Ok(result)
+        Ok(session.try_into_model().unwrap())
     }
 
     async fn find_by_refresh_token_hash(

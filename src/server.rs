@@ -145,8 +145,27 @@ pub async fn run_server() -> std::io::Result<()> {
     // Initializes the asynchronous Postgres connection pool.
     // This pool allows multiple concurrent database operations throughout the application.
 
-    let db = postgres_connection::initialize().await
-        .map_err(|e| std::io::Error::other(format!("Postgres initialization failed: {}", e)))?;
+    // ================================================================================================
+    // 🗄️ DATABASE SECTION
+    // ================================================================================================
+    //
+    // Initializes the asynchronous Database connection pool.
+    // This pool allows multiple concurrent database operations throughout the application.
+    // It selects between Postgres and SQLite based on DB_TYPE environment variable.
+    // Default is SQLite if unspecified or empty.
+
+    let db_type = std::env::var("CORE_DB_TYPE").unwrap_or_else(|_| "sqlite".to_string());
+    let db_type = if db_type.trim().is_empty() { "sqlite".to_string() } else { db_type };
+
+    info!("Database Type: {}", db_type);
+
+    let db = match db_type.as_str() {
+        "postgres" => postgres_connection::initialize().await
+            .map_err(|e| std::io::Error::other(format!("Postgres initialization failed: {}", e)))?,
+        "sqlite" => crate::infrastructures::sqlite_connection::initialize().await
+            .map_err(|e| std::io::Error::other(format!("SQLite initialization failed: {}", e)))?,
+        _ => return Err(std::io::Error::other(format!("Unsupported CORE_DB_TYPE: {}", db_type))),
+    };
 
     // ================================================================================================
     // 📂 REPOSITORY SECTION
@@ -281,7 +300,12 @@ pub async fn run_server() -> std::io::Result<()> {
     let srv_handle = srv.handle();
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
     
-    postgres_connection::monitor_health(db.clone(), shutdown_tx.clone());
+    // Launch health monitor based on DB type
+    match db_type.as_str() {
+        "postgres" => postgres_connection::monitor_health(db.clone(), shutdown_tx.clone()),
+        "sqlite" => crate::infrastructures::sqlite_connection::monitor_health(db.clone(), shutdown_tx.clone()),
+        _ => {} // Should not happen given earlier check
+    }
     
     let db_for_shutdown = db.clone();
 
@@ -311,8 +335,13 @@ pub async fn run_server() -> std::io::Result<()> {
     });
 
     let db_rx = shutdown_rx.clone();
+    let db_type_for_shutdown = db_type.clone();
     tokio::spawn(async move {
-        postgres_connection::shutdown(db_for_shutdown, db_rx).await;
+        match db_type_for_shutdown.as_str() {
+            "postgres" => postgres_connection::shutdown(db_for_shutdown, db_rx).await,
+            "sqlite" => crate::infrastructures::sqlite_connection::shutdown(db_for_shutdown, db_rx).await,
+            _ => {}
+        }
     });
 
     let server_result = srv.await;

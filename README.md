@@ -8,6 +8,14 @@ A production-ready, standalone user authentication and management service built 
 - **Multi-tenancy**: Tenant-scoped Users, Tenant Isolation
 - **Security**: Argon2 Password Hashing, Rate Limiting, API Key Protection
 - **Operations**: Structured Logging, Health Checks, Graceful Shutdown, Soft Deletes
+- **Performance**: RocksDB for local persistent caching with TTL
+
+## Caching
+
+This service implements a local persistent cache using [RocksDB](https://rocksdb.org/). This helps reduce database load and improve response times for frequently accessed data.
+- **Persistence**: Cached data is stored locally in the `rocksdb_cache` directory.
+- **TTL Support**: Items are cached with an expiration time, ensuring data freshness.
+- **Lazy Expiration**: Expired items are removed upon access to maintain efficiency.
 
 ## API Structure
 

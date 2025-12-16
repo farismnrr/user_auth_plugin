@@ -63,15 +63,23 @@ impl UserDetailsRepositoryTrait for UserDetailsRepository {
             id: Set(Uuid::new_v4()),  // Generate UUID in repository
             user_id: Set(user_id),
             profile_picture_url: Set(Some("https://storage.googleapis.com/farismnrr-gclouds.appspot.com/default.png".to_string())),
+            created_at: Set(chrono::Utc::now().into()),
+            updated_at: Set(chrono::Utc::now().into()),
+            full_name: Set(None),
+            phone_number: Set(None),
+            address: Set(None),
+            date_of_birth: Set(None),
+            deleted_at: Set(None),
             ..Default::default()
         };
 
-        let result = UserDetailsEntity::insert(user_details)
-            .exec_with_returning(&*self.db)
+        let result = UserDetailsEntity::insert(user_details.clone())
+            .exec(&*self.db)
             .await
             .map_err(|e| match e {
-                DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) => {
-                    if db_err.message().contains("duplicate") || db_err.message().contains("unique") {
+                DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) | DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) => {
+                    let msg = db_err.message().to_lowercase();
+                    if msg.contains("duplicate") || msg.contains("unique") {
                         AppError::BadRequest("User details already exist for this user".to_string())
                     } else {
                         AppError::DatabaseError(db_err.to_string())
@@ -80,7 +88,7 @@ impl UserDetailsRepositoryTrait for UserDetailsRepository {
                 _ => AppError::DatabaseError(e.to_string()),
             })?;
 
-        Ok(result)
+        Ok(user_details.try_into_model().unwrap())
     }
 
     async fn find_by_user_id(&self, user_id: Uuid) -> Result<Option<UserDetails>, AppError> {
