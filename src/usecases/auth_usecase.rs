@@ -112,7 +112,7 @@ impl AuthUseCase {
         let normalized_email = req.email.to_lowercase();
         let (user, is_restored) = match self.repository.find_by_email_with_deleted(&normalized_email).await? {
             Some(existing_user) => {
-                log::info!("Register flow found user: {:?} (Active: {})", existing_user.id, existing_user.deleted_at.is_none());
+                log::debug!("Register flow found user: {:?} (Active: {})", existing_user.id, existing_user.deleted_at.is_none());
                 if existing_user.deleted_at.is_some() {
                     // Restore deleted user
                     let create_req = CreateUserRequest {
@@ -139,7 +139,7 @@ impl AuthUseCase {
                     return Err(err);
                 }
 
-                log::info!("Registering new user '{}' with role '{}' for tenant '{}'", req.username, req.role, req.tenant_id);
+                log::debug!("Registering new user [REDACTED] with role '{}' for tenant '{}'", req.role, req.tenant_id);
 
                 // User doesn't exist, create new user
                 let create_req = CreateUserRequest {
@@ -461,7 +461,7 @@ impl AuthUseCase {
 
         // Verify session exists
         let refresh_token_hash = request_helper::hash_token(refresh_token);
-        log::info!("Validating session for hash: {}", refresh_token_hash);
+        log::debug!("Validating session for hash: [REDACTED]");
         let session = self.session_repository
             .find_by_refresh_token_hash(&refresh_token_hash)
             .await?
@@ -471,7 +471,7 @@ impl AuthUseCase {
             })?;
 
         // Verify user still exists in database
-        log::info!("Verifying user exists: {}", user_id);
+        log::debug!("Verifying user exists: {}", user_id);
         let _user = self
             .repository
             .find_by_id(user_id)
@@ -482,7 +482,7 @@ impl AuthUseCase {
             })?;
 
         // ROTATION: Delete the old session
-        log::info!("Deleting old session: {}", session.id);
+        log::debug!("Deleting old session: {}", session.id);
         if let Err(e) = self.session_repository.delete_session(session.id).await {
             match e {
                 AppError::NotFound(_) => {
@@ -493,7 +493,7 @@ impl AuthUseCase {
         }
 
         // Generate new tokens
-        log::info!("Generating new tokens for user: {}", user_id);
+        log::debug!("Generating new tokens for user: {}", user_id);
         let new_access_token = self
             .jwt_service
             .generate_access_token(user_id, tenant_id, role.clone())
@@ -509,7 +509,7 @@ impl AuthUseCase {
             })?;
 
         // Create new session
-        log::info!("Creating new session");
+        log::debug!("Creating new session");
         let new_refresh_token_hash = request_helper::hash_token(&new_refresh_token);
         let expires_at = Utc::now()
             + chrono::Duration::seconds(self.jwt_service.get_refresh_token_expiry());
@@ -524,7 +524,7 @@ impl AuthUseCase {
             )
             .await?;
         
-        log::info!("Refresh token rotation successful");
+        log::debug!("Refresh token rotation successful");
         Ok((new_access_token, new_refresh_token))
     }
 

@@ -1,6 +1,7 @@
 # User Auth Plugin - Makefile for Development Automation
 
-.PHONY: help dev start install-watch build test test-integration test-e2e test-e2e-pre test-e2e-auth test-e2e-tenant test-e2e-user migrate-up migrate-down migrate-fresh db-reset clean kill
+.PHONY: help dev start install-watch build test test-integration test-e2e test-e2e-pre test-e2e-auth test-e2e-tenant test-e2e-user migrate-up migrate-down migrate-fresh db-reset clean kill key
+
 
 # Default target
 help:
@@ -30,6 +31,7 @@ help:
 	@echo "  make db-reset         - Reset database (fresh + seed if available)"
 	@echo "  make clean            - Clean build artifacts"
 	@echo "  make kill             - Kill process running on PORT (from .env)"
+	@echo "  make key              - Generate a random SHA-512 key"
 	@echo ""
 
 # Run development server with hot reload (requires cargo-watch)
@@ -145,17 +147,30 @@ test-e2e-user:
 	@echo "🧪 Running user tests..."
 	@cd $(JEST_DIR) && npx jest 4_user_test --runInBand
 
-# Load .env variables and construct DATABASE_URL from CORE_DB_* variables
+# Load .env variables and construct DATABASE_URL based on DB_TYPE
 define load_env_and_db_url
 	export $$(grep -v '^#' .env | grep -v '^$$' | xargs); \
-	export DATABASE_URL="postgresql://$$CORE_DB_USER:$$CORE_DB_PASS@$$CORE_DB_HOST:$$CORE_DB_PORT/$$CORE_DB_NAME"
+	if [ "$$CORE_DB_TYPE" = "sqlite" ]; then \
+		DB_NAME=$${CORE_DB_NAME:-user_auth_plugin.sqlite}; \
+		case "$$DB_NAME" in \
+			*.sqlite|*.db) ;; \
+			*) DB_NAME="$$DB_NAME.sqlite";; \
+		esac; \
+		export DATABASE_URL="sqlite://$(CURDIR)/$$DB_NAME?mode=rwc"; \
+	else \
+		export DATABASE_URL="postgresql://$$CORE_DB_USER:$$CORE_DB_PASS@$$CORE_DB_HOST:$$CORE_DB_PORT/$$CORE_DB_NAME"; \
+	fi
 endef
 
 # Create database if it doesn't exist
 define create_db_if_not_exists
 	$(load_env_and_db_url); \
-	docker exec postgres-sql psql -U $$CORE_DB_USER -tc "SELECT 1 FROM pg_database WHERE datname = '$$CORE_DB_NAME'" | grep -q 1 || \
-	docker exec postgres-sql psql -U $$CORE_DB_USER -c "CREATE DATABASE $$CORE_DB_NAME"
+	if [ "$$CORE_DB_TYPE" = "sqlite" ]; then \
+		echo "📦 Using SQLite database (file-based)"; \
+	else \
+		docker exec postgres-sql psql -U $$CORE_DB_USER -tc "SELECT 1 FROM pg_database WHERE datname = '$$CORE_DB_NAME'" | grep -q 1 || \
+		docker exec postgres-sql psql -U $$CORE_DB_USER -c "CREATE DATABASE $$CORE_DB_NAME"; \
+	fi
 endef
 
 # Run database migrations (up)
@@ -195,3 +210,8 @@ kill:
 	@echo "🔪 Killing processes on port 5500..."
 	@lsof -ti:5500 | xargs -r kill -9 || echo "✅ No process running on port 5500"
 
+
+
+# Generate a random SHA-512 hash
+key:
+	@openssl rand -base64 128 | tr -d '\n' | sha512sum | awk '{print $$1}'

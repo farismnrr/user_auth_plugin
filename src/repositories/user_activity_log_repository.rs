@@ -66,7 +66,7 @@ impl UserActivityLogRepositoryTrait for UserActivityLogRepository {
             ..Default::default()
         };
 
-        let result = UserActivityLogEntity::insert(log.clone())
+        UserActivityLogEntity::insert(log.clone())
             .exec(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;

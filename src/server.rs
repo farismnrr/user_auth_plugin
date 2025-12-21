@@ -66,23 +66,11 @@ pub async fn run_server() -> std::io::Result<()> {
     std::fs::create_dir_all("logs")
         .map_err(|e| std::io::Error::other(format!("Failed to create logs directory: {}", e)))?;
 
+    let timestamp = Local::now().format("%Y%m%d_%H%M%S");
+    let log_file_path = format!("logs/{}.log", timestamp);
     let current_log_marker = "logs/.current_log";
-    let log_file_path = if let Ok(existing_path) = std::fs::read_to_string(current_log_marker) {
-        if std::path::Path::new(&existing_path).exists() {
-            existing_path.trim().to_string()
-        } else {
-            let timestamp = Local::now().format("%Y%m%d_%H%M%S");
-            let new_path = format!("logs/{}.log", timestamp);
-            std::fs::write(current_log_marker, &new_path)?;
-            new_path
-        }
-    } else {
-        let timestamp = Local::now().format("%Y%m%d_%H%M%S");
-        let new_path = format!("logs/{}.log", timestamp);
-        std::fs::write(current_log_marker, &new_path)?;
-        new_path
-    };
-
+    
+    let _ = std::fs::write(current_log_marker, &log_file_path);
     let log_file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -343,6 +331,16 @@ pub async fn run_server() -> std::io::Result<()> {
             _ => {}
         }
     });
+
+    let cache_rx = shutdown_rx.clone();
+    let cache_for_shutdown = cache.clone();
+    tokio::spawn(async move {
+        cache_for_shutdown.shutdown(cache_rx).await;
+    });
+
+    let cache_tx = shutdown_tx.clone();
+    let cache_for_health = cache.clone();
+    crate::infrastructures::cache::RocksDbCache::monitor_health(cache_for_health, cache_tx).await;
 
     let server_result = srv.await;
     let _ = shutdown_task.await;

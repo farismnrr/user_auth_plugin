@@ -78,7 +78,7 @@ impl UserRepositoryTrait for UserRepository {
             ..Default::default()
         };
 
-        let result = UserEntity::insert(user.clone())
+        UserEntity::insert(user.clone())
             .exec(&*self.db)
             .await
             .map_err(|e| match e {
@@ -110,7 +110,11 @@ impl UserRepositoryTrait for UserRepository {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         if let Some(ref u) = user {
-            self.cache.set(&cache_key, u, Duration::from_secs(3600));
+            let ttl_secs = std::env::var("CACHE_TTL")
+                .unwrap_or_else(|_| "3600".to_string())
+                .parse::<u64>()
+                .unwrap_or(3600);
+            self.cache.set(&cache_key, u, Duration::from_secs(ttl_secs));
         }
 
         Ok(user)
@@ -133,7 +137,11 @@ impl UserRepositoryTrait for UserRepository {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         if let Some(ref u) = user {
-             self.cache.set(&cache_key, u, Duration::from_secs(3600));
+             let ttl_secs = std::env::var("CACHE_TTL")
+                .unwrap_or_else(|_| "3600".to_string())
+                .parse::<u64>()
+                .unwrap_or(3600);
+             self.cache.set(&cache_key, u, Duration::from_secs(ttl_secs));
         }
 
         Ok(user)
@@ -239,9 +247,9 @@ impl UserRepositoryTrait for UserRepository {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
         
         if user.is_some() {
-            log::info!("FOUND user by email (inc deleted): {} -> {:?}", email, user.as_ref().unwrap().id);
+            log::debug!("FOUND user by email (inc deleted) [REDACTED] -> {}", user.as_ref().unwrap().id);
         } else {
-            log::info!("NOT FOUND user by email (inc deleted): {}", email);
+            log::debug!("NOT FOUND user by email (inc deleted) [REDACTED]");
         }
         Ok(user)
     }

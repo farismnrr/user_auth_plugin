@@ -2,7 +2,7 @@ use crate::errors::{AppError, ValidationDetail};
 
 /// Validates a username.
 pub fn validate_username(username: &str) -> Result<(), AppError> {
-    log::info!("Checking username: '{}' (len: {})", username, username.trim().len());
+    log::debug!("Checking username (len: {})", username.trim().len());
     let trimmed = username.trim();
     
     if trimmed.is_empty() {

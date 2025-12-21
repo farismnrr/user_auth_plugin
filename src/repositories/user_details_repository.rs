@@ -73,7 +73,7 @@ impl UserDetailsRepositoryTrait for UserDetailsRepository {
             ..Default::default()
         };
 
-        let result = UserDetailsEntity::insert(user_details.clone())
+        UserDetailsEntity::insert(user_details.clone())
             .exec(&*self.db)
             .await
             .map_err(|e| match e {
@@ -105,7 +105,11 @@ impl UserDetailsRepositoryTrait for UserDetailsRepository {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         if let Some(ref d) = user_details {
-            self.cache.set(&cache_key, d, Duration::from_secs(3600));
+            let ttl_secs = std::env::var("CACHE_TTL")
+                .unwrap_or_else(|_| "3600".to_string())
+                .parse::<u64>()
+                .unwrap_or(3600);
+            self.cache.set(&cache_key, d, Duration::from_secs(ttl_secs));
         }
 
         Ok(user_details)

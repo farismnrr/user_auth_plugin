@@ -77,8 +77,46 @@ impl RocksDbCache {
     }
 
     pub fn del(&self, key: &str) {
-        if let Err(e) = self.db.delete(key) {
-            error!("RocksDB delete error for key {}: {}", key, e);
+         let _ = self.db.delete(key);
+    }
+
+    /// Monitors the health of the RocksDB connection (basically checks if it's open)
+    pub async fn monitor_health(self: Arc<Self>, shutdown_tx: tokio::sync::watch::Sender<bool>) {
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(10));
+            interval.tick().await;
+
+            loop {
+                interval.tick().await;
+                // Simple health check: try to read a non-existent key. 
+                // If it panics or errors catastrophically, we might want to shut down.
+                // RocksDB usually doesn't disconnect like a network DB, so this is ensuring the handle is valid.
+                if let Err(e) = self.db.get("HEALTH_CHECK_PROBE") {
+                     error!("❌ RocksDB health check failed: {}", e);
+                     error!("🛑 Triggering server shutdown due to RocksDB failure");
+                     let _ = shutdown_tx.send(true);
+                     break;
+                }
+            }
+        });
+    }
+
+    /// Gracefully shuts down the RocksDB connection (flushes and drops)
+    pub async fn shutdown(self: Arc<Self>, mut shutdown_rx: tokio::sync::watch::Receiver<bool>) {
+        let _ = shutdown_rx.changed().await;
+        
+        // In Rust rocksdb, dropping the DB handle automatically closes it.
+        // We ensure we hold the last reference or just let it drop naturally when the Arc count goes to 0.
+        // Since we are moving the Arc into this async block and it's likely the main main holds one, 
+        // we might just log here.
+        
+        log::info!("🪨 RocksDB connection flushing and closing...");
+        // Arc::try_unwrap would fail if others hold it, but when the server stops, other holders (repos) are dropped.
+        // Explicit flush or cancel compaction could go here if needed.
+        if let Err(e) = self.db.flush() {
+            log::error!("Error flushing RocksDB: {}", e);
+        } else {
+             log::info!("RocksDB flushed successfully.");
         }
     }
 }

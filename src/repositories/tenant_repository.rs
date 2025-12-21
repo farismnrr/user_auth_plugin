@@ -70,7 +70,7 @@ impl TenantRepositoryTrait for TenantRepository {
             ..Default::default()
         };
 
-        let result = TenantEntity::insert(tenant.clone())
+        TenantEntity::insert(tenant.clone())
             .exec(&*self.db)
             .await
             .map_err(|e| match e {
@@ -101,7 +101,11 @@ impl TenantRepositoryTrait for TenantRepository {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         if let Some(ref t) = tenant {
-            self.cache.set(&cache_key, t, Duration::from_secs(3600));
+            let ttl_secs = std::env::var("CACHE_TTL")
+                .unwrap_or_else(|_| "3600".to_string())
+                .parse::<u64>()
+                .unwrap_or(3600);
+            self.cache.set(&cache_key, t, Duration::from_secs(ttl_secs));
         }
 
         Ok(tenant)
@@ -121,7 +125,11 @@ impl TenantRepositoryTrait for TenantRepository {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         if let Some(ref t) = tenant {
-            self.cache.set(&cache_key, t, Duration::from_secs(3600));
+            let ttl_secs = std::env::var("CACHE_TTL")
+                .unwrap_or_else(|_| "3600".to_string())
+                .parse::<u64>()
+                .unwrap_or(3600);
+            self.cache.set(&cache_key, t, Duration::from_secs(ttl_secs));
         }
 
         Ok(tenant)

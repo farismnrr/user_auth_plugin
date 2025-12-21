@@ -74,7 +74,7 @@ impl UserSessionRepositoryTrait for UserSessionRepository {
             ..Default::default()
         };
 
-        let result = UserSessionEntity::insert(session.clone())
+        UserSessionEntity::insert(session.clone())
             .exec(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;

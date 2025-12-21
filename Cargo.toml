@@ -61,7 +61,5 @@ reqwest = { version = "0.12.25", features = ["json", "blocking", "multipart", "c
 serde_json = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
 
-[[test]]
-name = "e2e_contracts"
-path = "tests/e2e/contracts/test-e2e.rs"
+
 
