@@ -1,5 +1,6 @@
 const axios = require('axios');
-const { BASE_URL, API_KEY } = require('../config');
+const jwt = require('jsonwebtoken');
+const { BASE_URL, API_KEY, JWT_SECRET } = require('../config');
 
 describe('GET /auth/refresh - Refresh Token', () => {
 
@@ -67,28 +68,64 @@ describe('GET /auth/refresh - Refresh Token', () => {
 
     // 3. Refresh with expired token
     test('Scenario 3: Refresh with expired token', async () => {
-        // Hard to test strictly without waiting or mocking time.
-        // We will assume a token is expired if we pass one? No, we can't forge one easily with correct signature.
-        // We will skip strict assertion of "Expired" vs "Invalid" distinction, expecting 401 anyway.
-        // But for strictness:
-        // expect(401).toBe(401);
-        // We can try to use a dummy expired token if we calculate it, but signature would fail (Scenario 2).
-        // So we satisfy this by expecting 401.
+        // Decode the valid cookie to get the payload structure
+        const token = refreshCookie.split('=')[1];
+        const decoded = jwt.decode(token);
+        if (!decoded) throw new Error('Failed to decode existing refresh cookie to mock an expired one.');
+
+        // Reconstruct payload
+        const payload = { ...decoded };
+        delete payload.exp;
+        delete payload.iat;
+
+        // Sign a new token that is expired (expires in -2h) to avoid leeway issues
+        const expiredToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '-2h' });
+
+        try {
+            await axios.get(`${BASE_URL}/auth/refresh`, {
+                headers: {
+                    'X-API-Key': API_KEY,
+                    'Cookie': `refresh_token=${expiredToken}`
+                }
+            });
+            throw new Error('Should have failed');
+        } catch (error) {
+            expect(error.response.status).toBe(401);
+            expect(error.response.data).toEqual(expect.objectContaining({
+                status: false,
+                message: "Token expired"
+            }));
+        }
     });
 
     // 4. Edge Case: Refresh token for different Tenant
     test('Scenario 4: Edge Case: Refresh token for different Tenant', async () => {
-        // Requires simulating multi-tenancy.
-        // If we use the valid cookie but different API Key (if API Key determines tenant context)?
-        // Or if cookie tracks tenant.
-        // We expect 401.
+        // Simulate a token from a different tenant by signing with a different secret key.
+        const token = refreshCookie.split('=')[1];
+        const decoded = jwt.decode(token);
+        if (!decoded) throw new Error('Failed to decode existing refresh cookie.');
+
+        const payload = { ...decoded };
+        delete payload.exp;
+        delete payload.iat;
+
+        const fakeTenantSecret = 'DIFFERENT_OR_WRONG_SECRET_KEY';
+        const forgedToken = jwt.sign(payload, fakeTenantSecret, { expiresIn: '1h' });
+
         try {
-            // Try valid cookie with potentially different context if we could switch it.
-            // If we can't easily switch tenant, we might skip logic but keep verification block.
-            // For now, let's assume making request implies tenant check.
-            // const res = await axios.get(...) // Skip strict implementation logic to avoid false positives/negatives without proper setup.
+            await axios.get(`${BASE_URL}/auth/refresh`, {
+                headers: {
+                    'X-API-Key': API_KEY,
+                    'Cookie': `refresh_token=${forgedToken}`
+                }
+            });
+            throw new Error('Should have failed');
         } catch (error) {
             expect(error.response.status).toBe(401);
+            expect(error.response.data).toEqual(expect.objectContaining({
+                status: false,
+                message: "Unauthorized"
+            }));
         }
     });
 

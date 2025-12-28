@@ -43,6 +43,7 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
                 web::scope("") // Nested scope to apply JWT middleware to multiple routes? 
                                // Or just resource chaining. Logout/Verify/ChangePW
                 .wrap(jwt_auth)
+                .wrap(ApiKeyMiddleware)
                 .route("/logout", web::delete().to(logout))
                 .route("/verify", web::get().to(verify))
                 .route("/reset", web::put().to(change_password))

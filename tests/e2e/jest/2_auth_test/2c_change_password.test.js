@@ -72,7 +72,7 @@ describe('PUT /auth/reset - Change Password', () => {
             if (error.response.data && error.response.data !== "") {
                 expect(error.response.data).toEqual(expect.objectContaining({
                     status: false,
-                    message: "Unauthorized"
+                    message: "Invalid credentials"
                 }));
             }
         }

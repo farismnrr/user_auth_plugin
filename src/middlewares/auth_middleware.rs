@@ -26,6 +26,23 @@ pub async fn validator(
     
     match jwt_service.validate_token(token) {
         Ok(claims) => {
+            // Check if tenant_id matches the one in request extensions (from ApiKeyMiddleware)
+            let tenant_id_str = req.extensions()
+                .get::<crate::middlewares::api_key_middleware::TenantId>()
+                .map(|t| t.0.to_string());
+            
+            if let Some(tid_str) = tenant_id_str {
+               if claims.tenant_id != tid_str {
+                   let err = actix_web::error::InternalError::from_response(
+                        "Unauthorized", 
+                        actix_web::HttpResponse::Forbidden()
+                            .content_type("application/json")
+                            .body(r#"{"status":false,"message":"Unauthorized"}"#)
+                    ).into();
+                    return Err((err, req));
+               }
+            }
+
             // Parse user_id from claims
             match Uuid::parse_str(&claims.sub) {
                 Ok(user_id) => {

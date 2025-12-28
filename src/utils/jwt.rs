@@ -158,10 +158,14 @@ impl JwtService {
     /// Returns `jsonwebtoken::errors::Error` if token is invalid or expired.
     #[allow(dead_code)]
     pub fn validate_token(&self, token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
+        let mut validation = Validation::default();
+        validation.validate_nbf = true;
+        validation.leeway = 0; // Strict checking
+        
         let token_data = decode::<Claims>(
             token,
             &DecodingKey::from_secret(self.secret.as_bytes()),
-            &Validation::default(),
+            &validation,
         )?;
 
         Ok(token_data.claims)
