@@ -98,7 +98,7 @@ start-docker:
 	docker run --rm -it --network="host" --env-file .env $(DOCKER_IMAGE_NAME):$$tag
 
 # Push to GHCR (reads env vars) - Multi-arch build
-push:
+push-local:
 	@read -p "Enter Docker tag to push (default: latest): " tag; \
 	tag=$${tag:-latest}; \
 	echo "🚀 Pushing to GHCR with multi-arch build (amd64, arm64) - tag: $$tag..."; \
@@ -111,6 +111,10 @@ push:
 	fi; \
 	docker buildx build --platform linux/amd64,linux/arm64 -t $(GHCR_REPO):$$tag --push .; \
 	echo "✅ Image pushed to $(GHCR_REPO):$$tag"
+
+push:
+	@echo "⚠️  Build moved to GitHub Actions. Go to generic/actions to trigger manually."
+	@echo "👉 Use 'make push-local' to push from your local machine."
 
 # --- Docker Compose Configuration ---
 
