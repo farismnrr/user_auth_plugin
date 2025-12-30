@@ -4,6 +4,7 @@ import router from '../router'
 import AuthService from '../services/auth.service'
 import { useToast } from '../composables/useToast'
 import { parseError, ERROR_TYPES } from '../utils/errorMessages'
+import { isValidRedirectUri } from '../utils/ssoValidation'
 
 export const useAuthStore = defineStore('auth', () => {
     const toast = useToast()
@@ -56,11 +57,24 @@ export const useAuthStore = defineStore('auth', () => {
                 }
 
                 // SSO: Check for redirect params from URL query first
+                // SSO: Check for redirect params from URL query first
+                // Note: outer urlParams might be available but we re-parse or reuse here safely
                 const urlParams = new URLSearchParams(window.location.search)
                 const redirectUri = urlParams.get('redirect_uri') || sessionStorage.getItem('sso_redirect_uri')
                 const state = ssoState.value || ''
 
                 if (redirectUri) {
+                    // Validate redirect_uri against whitelist
+                    if (!isValidRedirectUri(redirectUri)) {
+                        console.warn('[SSO Security] Blocked invalid redirect_uri:', redirectUri)
+                        sessionStorage.removeItem('sso_redirect_uri')
+                        sessionStorage.removeItem('sso_tenant_id')
+                        ssoState.value = null
+                        ssoNonce.value = null
+                        router.push({ name: 'forbidden' })
+                        return
+                    }
+
                     // Clear SSO data
                     sessionStorage.removeItem('sso_redirect_uri')
                     sessionStorage.removeItem('sso_tenant_id')
@@ -68,12 +82,22 @@ export const useAuthStore = defineStore('auth', () => {
                     ssoNonce.value = null
 
                     // Redirect back to calling app with access_token in hash fragment
-                    const finalUrl = `${redirectUri}#access_token=${access_token}&state=${state}`
+                    // Use URL object for safe construction
+                    try {
+                        const url = new URL(redirectUri)
+                        const hashParams = new URLSearchParams()
+                        hashParams.set('access_token', access_token)
+                        hashParams.set('state', state)
+                        url.hash = hashParams.toString()
 
-                    // Don't set loading=false, just redirect immediately
-                    window.location.href = finalUrl
-                    // Exit early - don't run finally block
-                    return
+                        // Don't set loading=false, just redirect immediately
+                        window.location.href = url.toString()
+                        return
+                    } catch (e) {
+                        console.error('Invalid redirect URL construction:', e)
+                        router.push({ name: 'forbidden' })
+                        return
+                    }
                 }
 
                 // No SSO redirect - show success message

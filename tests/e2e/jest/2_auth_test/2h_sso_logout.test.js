@@ -37,7 +37,7 @@ describe('GET /auth/sso/logout - SSO Logout', () => {
             // We want to inspect the initial 302 response or the final destination.
             // However, Jest/Axios usually follows redirects. 
             // We can disable redirect following to check the 302 status manually.
-            const response = await axios.get(`${BASE_URL}/auth/sso/logout?redirect_uri=http://example.com/login`, {
+            const response = await axios.get(`${BASE_URL}/auth/sso/logout?redirect_uri=http://localhost:3000`, {
                 headers: {
                     // API Key is NOT required for SSO logout as per current implementation exemption
                     // But we can send it or not, it should be ignored or accepted.
@@ -49,7 +49,7 @@ describe('GET /auth/sso/logout - SSO Logout', () => {
             });
 
             expect(response.status).toBe(302);
-            expect(response.headers['location']).toBe('http://example.com/login');
+            expect(response.headers['location']).toBe('http://localhost:3000');
 
             // Check cookie clearing
             const cookies = response.headers['set-cookie'];
