@@ -76,7 +76,6 @@ export const useAuthStore = defineStore('auth', () => {
                         router.push({ name: 'forbidden' })
                         return
                     }
-
                     // Clear SSO data
                     sessionStorage.removeItem('sso_redirect_uri')
                     sessionStorage.removeItem('sso_tenant_id')
