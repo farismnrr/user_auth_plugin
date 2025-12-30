@@ -20,6 +20,8 @@ export const useAuthStore = defineStore('auth', () => {
     const ssoState = ref(null)
     const ssoNonce = ref(null)
 
+
+
     // Getters
     const isAuthenticated = computed(() => !!accessToken.value)
 
