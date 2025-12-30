@@ -19,6 +19,41 @@ export const useAuthStore = defineStore('auth', () => {
     const ssoState = ref(null)
     const ssoNonce = ref(null)
 
+    // Helper to validate and normalize redirect URIs
+    const validateRedirectUri = (redirectUri, allowedOrigins) => {
+        if (!redirectUri || typeof redirectUri !== 'string') {
+            return null
+        }
+
+        // Trim whitespace
+        const trimmed = redirectUri.trim()
+        if (!trimmed) {
+            return null
+        }
+
+        try {
+            // If it's a relative URL (no scheme/host), treat it as same-origin
+            const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)
+            if (!hasScheme) {
+                // Ensure it starts with a slash to avoid protocol-relative URLs like "//evil.com"
+                const normalizedPath = trimmed.startsWith('/') ? trimmed : '/' + trimmed
+                return window.location.origin + normalizedPath
+            }
+
+            // Absolute URL: check against allow-list of origins
+            const url = new URL(trimmed)
+            if (allowedOrigins.includes(url.origin)) {
+                return url.toString()
+            }
+        } catch {
+            // Invalid URL format
+            return null
+        }
+
+        // Not in allow-list
+        return null
+    }
+
     // Getters
     const isAuthenticated = computed(() => !!accessToken.value)
 
@@ -61,19 +96,25 @@ export const useAuthStore = defineStore('auth', () => {
                 const state = ssoState.value || ''
 
                 if (redirectUri) {
-                    // Clear SSO data
-                    sessionStorage.removeItem('sso_redirect_uri')
-                    sessionStorage.removeItem('sso_tenant_id')
-                    ssoState.value = null
-                    ssoNonce.value = null
+                    // Validate and normalize redirect URI before using it
+                    const allowedOrigins = [window.location.origin]
+                    const safeRedirectBase = validateRedirectUri(redirectUri, allowedOrigins)
 
-                    // Redirect back to calling app with access_token in hash fragment
-                    const finalUrl = `${redirectUri}#access_token=${access_token}&state=${state}`
+                    if (safeRedirectBase) {
+                        // Clear SSO data
+                        sessionStorage.removeItem('sso_redirect_uri')
+                        sessionStorage.removeItem('sso_tenant_id')
+                        ssoState.value = null
+                        ssoNonce.value = null
 
-                    // Don't set loading=false, just redirect immediately
-                    window.location.href = finalUrl
-                    // Exit early - don't run finally block
-                    return
+                        // Redirect back to calling app with access_token in hash fragment
+                        const finalUrl = `${safeRedirectBase}#access_token=${access_token}&state=${state}`
+
+                        // Don't set loading=false, just redirect immediately
+                        window.location.href = finalUrl
+                        // Exit early - don't run finally block
+                        return
+                    }
                 }
 
                 // No SSO redirect - show success message
