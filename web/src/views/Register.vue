@@ -1,10 +1,11 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useQuotes } from '../composables/useQuotes'
 import { usePasswordToggle } from '../composables/usePasswordToggle'
 import { useSSO } from '../composables/useSSO'
+import { ERROR_MESSAGES } from '../utils/errorMessages'
 import NetworkBackground from '../components/NetworkBackground.vue'
 
 const authStore = useAuthStore()
@@ -15,7 +16,6 @@ const password = ref('')
 const confirmPassword = ref('')
 const { showPassword, togglePassword } = usePasswordToggle()
 const { showPassword: showConfirmPassword, togglePassword: toggleConfirmPassword } = usePasswordToggle()
-const passwordMismatch = ref(false)
 
 // Use shared quotes composable
 const { currentQuote } = useQuotes()
@@ -23,12 +23,17 @@ const { currentQuote } = useQuotes()
 // Use shared SSO composable
 useSSO()
 
+// Clear errors when route changes
+watch(() => route.path, () => {
+    authStore.error = null
+})
+
 const handleRegister = async () => {
     if (password.value !== confirmPassword.value) {
-        passwordMismatch.value = true
+        authStore.error = ERROR_MESSAGES.PASSWORD_MISMATCH
         return
     }
-    passwordMismatch.value = false
+    authStore.error = null
     await authStore.register(username.value, email.value, password.value, 'user')
 }
 </script>
@@ -219,17 +224,10 @@ const handleRegister = async () => {
           </div>
 
           <div
-            v-if="passwordMismatch"
-            class="error-alert"
-          >
-            <p>Passwords do not match.</p>
-          </div>
-
-          <div
             v-if="authStore.error"
-            class="error-alert"
+            class="inline-error"
           >
-            <p>{{ authStore.error }}</p>
+            {{ authStore.error }}
           </div>
 
           <button
@@ -457,14 +455,33 @@ const handleRegister = async () => {
     color: var(--color-primary);
 }
 
-.error-alert {
-  padding: 0.75rem;
-  background-color: #fef2f2;
-  border: 1px solid #fee2e2;
-  border-radius: var(--radius-md);
-  color: var(--color-error);
+/* Inline Error - Refined for Enterprise Feel */
+.inline-error {
+  padding: 0.875rem 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 3px solid #ef4444;
+  border-radius: 6px;
+  color: #dc2626;
   font-size: 0.875rem;
-  text-align: center;
+  line-height: 1.5;
+  text-align: left;
+  word-break: break-word;
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .btn-primary {

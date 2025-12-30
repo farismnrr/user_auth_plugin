@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useQuotes } from '../composables/useQuotes'
@@ -18,6 +18,11 @@ const { currentQuote } = useQuotes()
 
 // Use shared SSO composable
 useSSO()
+
+// Clear errors when route changes
+watch(() => route.path, () => {
+    authStore.error = null
+})
 
 const handleLogin = async () => {
     await authStore.login(username.value, password.value)
@@ -145,9 +150,9 @@ const handleLogin = async () => {
 
           <div
             v-if="authStore.error"
-            class="error-alert"
+            class="inline-error"
           >
-            <p>{{ authStore.error }}</p>
+            {{ authStore.error }}
           </div>
 
           <button
@@ -377,14 +382,33 @@ const handleLogin = async () => {
     color: var(--color-primary);
 }
 
-.error-alert {
-  padding: 0.75rem;
-  background-color: #fef2f2;
-  border: 1px solid #fee2e2;
-  border-radius: var(--radius-md);
-  color: var(--color-error);
+/* Inline Error - Refined for Enterprise Feel */
+.inline-error {
+  padding: 0.875rem 1rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 3px solid #ef4444;
+  border-radius: 6px;
+  color: #dc2626;
   font-size: 0.875rem;
-  text-align: center;
+  line-height: 1.5;
+  text-align: left;
+  word-break: break-word;
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .btn-primary {

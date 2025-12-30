@@ -2,8 +2,12 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import router from '../router'
 import AuthService from '../services/auth.service'
+import { useToast } from '../composables/useToast'
+import { parseError, ERROR_TYPES } from '../utils/errorMessages'
 
 export const useAuthStore = defineStore('auth', () => {
+    const toast = useToast()
+
     // State
     const user = ref(null)
     const accessToken = ref(null)
@@ -47,7 +51,7 @@ export const useAuthStore = defineStore('auth', () => {
                         user.value = verifyResponse.data.user
                     }
                 } catch (e) {
-                    console.error("Failed to fetch user details:", e)
+                    // console.error("Failed to fetch user details:", e)
                     // Optional: handle error, maybe logout if verify fails?
                 }
 
@@ -73,11 +77,20 @@ export const useAuthStore = defineStore('auth', () => {
                 }
 
                 // No SSO redirect - show success message
-                alert('Login successful! You can close this window.')
+                toast.success('Login successful! You can close this window.')
             }
         } catch (err) {
-            console.error(err)
-            error.value = err.response?.data?.message || err.message || 'Login failed'
+            // console.error(err)
+            const { message, type } = parseError(err)
+
+            if (type === ERROR_TYPES.CREDENTIAL) {
+                // Show inline error for credential issues
+                error.value = message
+            } else {
+                // Show toast for network/system errors
+                toast.error(message)
+                error.value = null
+            }
         } finally {
             // Only set loading=false if we didn't redirect
             loading.value = false
@@ -96,7 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
             }
 
             await AuthService.register(username, email, password, role, ssoParams)
-            alert("Registration successful. Please login.")
+            toast.success('Registration successful! Please sign in to continue.')
 
             // SSO: Preserve redirect params when going to login
             // Note: state/nonce will be regenerated fresh on login page
@@ -111,8 +124,17 @@ export const useAuthStore = defineStore('auth', () => {
                 router.push('/login')
             }
         } catch (err) {
-            console.error(err)
-            error.value = err.response?.data?.message || err.message || 'Registration failed'
+            // console.error(err)
+            const { message, type } = parseError(err)
+
+            if (type === ERROR_TYPES.CREDENTIAL) {
+                // Show inline error for credential issues
+                error.value = message
+            } else {
+                // Show toast for network/system errors
+                toast.error(message)
+                error.value = null
+            }
         } finally {
             loading.value = false
         }
@@ -124,7 +146,7 @@ export const useAuthStore = defineStore('auth', () => {
                 await AuthService.logout(accessToken.value)
             }
         } catch (err) {
-            console.error("Logout error", err)
+            // console.error("Logout error", err)
         } finally {
             user.value = null
             accessToken.value = null
@@ -143,7 +165,7 @@ export const useAuthStore = defineStore('auth', () => {
                 // Note: user info might need to be fetched if not in refresh response
             }
         } catch {
-            console.log("No valid session found or refresh failed.")
+            // console.log("No valid session found or refresh failed.")
         } finally {
             loading.value = false
             isInitialized.value = true

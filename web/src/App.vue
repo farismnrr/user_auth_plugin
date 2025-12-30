@@ -1,13 +1,19 @@
 <script setup>
+import { onMounted } from 'vue'
+import { useAuthStore } from './stores/auth'
+import ToastContainer from './components/ToastContainer.vue'
 import { RouterView } from 'vue-router'
+
+const authStore = useAuthStore()
+
+onMounted(() => {
+    authStore.refreshToken()
+})
 </script>
 
 <template>
-  <RouterView v-slot="{ Component }">
-    <KeepAlive :include="['Login', 'Register']">
-      <component :is="Component" />
-    </KeepAlive>
-  </RouterView>
+  <ToastContainer />
+  <RouterView />
 </template>
 
 <style>

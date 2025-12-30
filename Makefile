@@ -83,6 +83,7 @@ DOCKER_IMAGE_NAME = user_auth_plugin
 GHCR_REPO = ghcr.io/farismnrr/user_auth_plugin
 
 # Build via Docker
+docker: build-docker
 build-docker:
 	@read -p "Enter Docker tag (default: latest): " tag; \
 	tag=$${tag:-latest}; \
@@ -98,7 +99,7 @@ start-docker:
 	docker run --rm -it --network="host" --env-file .env $(DOCKER_IMAGE_NAME):$$tag
 
 # Push to GHCR (reads env vars) - Multi-arch build
-push-local:
+push-local: build-docker
 	@read -p "Enter Docker tag to push (default: latest): " tag; \
 	tag=$${tag:-latest}; \
 	echo "🚀 Pushing to GHCR with multi-arch build (amd64, arm64) - tag: $$tag..."; \
@@ -113,8 +114,21 @@ push-local:
 	echo "✅ Image pushed to $(GHCR_REPO):$$tag"
 
 push:
-	@echo "⚠️  Build moved to GitHub Actions. Go to generic/actions to trigger manually."
-	@echo "👉 Use 'make push-local' to push from your local machine."
+	@echo "🚀 Triggering GitHub Actions workflow for Docker push..."
+	@command -v gh >/dev/null 2>&1 || ( \
+		if command -v apt-get >/dev/null 2>&1; then \
+			echo "⬇️  Installing GitHub CLI via apt..."; \
+			SUDO=$$(command -v sudo >/dev/null 2>&1 && echo sudo || echo); \
+			$$SUDO apt-get update && $$SUDO apt-get install -y gh || { echo "❌ Failed to install gh"; exit 1; }; \
+		else \
+			echo "❌ GitHub CLI 'gh' not found and auto-install is not configured for this OS."; \
+			echo "   Install from https://cli.github.com/ then rerun 'make push'"; \
+			exit 1; \
+		fi \
+	)
+	@echo "📦 Triggering workflow 'build-multitenant-user-management.yml'..."
+	@gh workflow run build-multitenant-user-management.yml --ref main
+	@echo "✅ Workflow dispatched. Track with 'gh run watch --latest'"
 
 # --- Docker Compose Configuration ---
 

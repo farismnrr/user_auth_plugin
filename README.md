@@ -10,6 +10,20 @@ A production-ready, standalone user authentication and management service built 
 - **Operations**: Structured Logging, Health Checks, Graceful Shutdown, Soft Deletes
 - **Performance**: RocksDB for local persistent caching with TTL
 
+## Documentation
+
+📚 **[SSO Integration Guide](docs/README.md)** - Complete guide for integrating SSO into your frontend application
+
+| Document | Description |
+|----------|-------------|
+| [Overview](docs/01-overview.md) | Architecture and SSO flow |
+| [Getting Started](docs/02-configuration.md) | **Tenant setup** and environment config |
+| [Redirect Parameters](docs/03-redirect-parameters.md) | URL format and params |
+| [Frontend Implementation](docs/04-frontend-implementation.md) | Next.js, React, Vue, JS examples |
+| [Token Handling](docs/05-token-handling.md) | Parsing and storing tokens |
+| [API Reference](docs/06-api-reference.md) | All endpoints with examples |
+| [Troubleshooting](docs/07-troubleshooting.md) | Common issues and solutions |
+
 ## Caching
 
 This service implements a local persistent cache using [RocksDB](https://rocksdb.org/). This helps reduce database load and improve response times for frequently accessed data.

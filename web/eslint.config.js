@@ -28,6 +28,8 @@ export default [
                 localStorage: 'readonly',
                 requestAnimationFrame: 'readonly',
                 cancelAnimationFrame: 'readonly',
+                setTimeout: 'readonly',
+                clearTimeout: 'readonly',
                 setInterval: 'readonly',
                 clearInterval: 'readonly',
                 alert: 'readonly',
