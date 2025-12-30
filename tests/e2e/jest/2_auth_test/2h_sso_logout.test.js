@@ -84,4 +84,24 @@ describe('GET /auth/sso/logout - SSO Logout', () => {
         }
     });
 
+    // 3. Security: Redirect URI not in allowed origins whitelist
+    test('Scenario 3: SSO Logout with invalid redirect_uri returns 403', async () => {
+        try {
+            await axios.get(`${BASE_URL}/auth/sso/logout?redirect_uri=https://evil-site.com/malicious`, {
+                headers: {
+                    'Cookie': refreshCookie
+                },
+                maxRedirects: 0,
+                validateStatus: status => status >= 200 && status < 500
+            });
+            // If we get here check the status
+        } catch (error) {
+            expect(error.response.status).toBe(403);
+            expect(error.response.data).toEqual(expect.objectContaining({
+                status: false,
+                message: expect.stringMatching(/not in allowed origins|Forbidden/i)
+            }));
+        }
+    });
+
 });

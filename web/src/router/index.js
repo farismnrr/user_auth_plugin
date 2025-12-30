@@ -1,9 +1,44 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
+// Allowed origins whitelist - must match backend ALLOWED_ORIGINS
+const ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5500',
+    'http://127.0.0.1:5500',
+    'https://app.farismunir.my.id',
+    'https://sso.farismunir.my.id',
+    'https://app.iotunnel.my.id',
+    'https://sso.iotunnel.my.id'
+]
+
+/**
+ * Validates if a redirect_uri is in the allowed origins whitelist.
+ * Extracts the origin (protocol + host) and performs exact match.
+ * @param {string} redirectUri - The redirect URI to validate
+ * @returns {boolean} - True if valid, false otherwise
+ */
+const isValidRedirectUri = (redirectUri) => {
+    if (!redirectUri) return true // No redirect_uri is okay (non-SSO flow)
+
+    try {
+        const url = new URL(redirectUri)
+        const origin = `${url.protocol}//${url.host}`
+        return ALLOWED_ORIGINS.some(allowed => allowed === origin)
+    } catch {
+        // Invalid URL format
+        return false
+    }
+}
+
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes: [
+        {
+            path: '/',
+            redirect: '/login'
+        },
         {
             path: '/login',
             name: 'login',
@@ -15,6 +50,12 @@ const router = createRouter({
             name: 'register',
             component: () => import('../views/Register.vue'),
             meta: { guestOnly: true, title: 'Create Account' }
+        },
+        {
+            path: '/forbidden',
+            name: 'forbidden',
+            component: () => import('../views/Forbidden.vue'),
+            meta: { title: 'Access Forbidden' }
         }
     ]
 })
@@ -29,6 +70,13 @@ router.beforeEach(async (to, from, next) => {
     if (to.name === 'login' || to.name === 'register') {
         const redirectUri = to.query.redirect_uri
         const tenantId = to.query.tenant_id
+
+        // Validate redirect_uri against whitelist
+        if (redirectUri && !isValidRedirectUri(redirectUri)) {
+            // Invalid redirect_uri - redirect to forbidden page
+            console.warn('[SSO Security] Blocked invalid redirect_uri:', redirectUri)
+            return next({ name: 'forbidden' })
+        }
 
         if (redirectUri) {
             sessionStorage.setItem('sso_redirect_uri', redirectUri)

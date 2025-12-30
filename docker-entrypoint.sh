@@ -3,19 +3,6 @@ set -e
 
 echo "🚀 Starting User Auth Plugin..."
 
-# ============================================================================
-# Runtime Configuration Injection
-# ============================================================================
-if [ -d "/app/web/dist" ]; then
-    echo "⚙️  Generating frontend configuration..."
-    cat <<EOF > /app/web/dist/runtime-env.js
-window.config = {
-  API_KEY: "${API_KEY:-}",
-  ENDPOINT: "${ENDPOINT:-http://localhost:5500}"
-};
-EOF
-fi
-
 # Trap signals for graceful shutdown
 trap 'echo "🛑 Shutting down..."' SIGTERM SIGINT
 

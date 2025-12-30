@@ -10,3 +10,6 @@ user_auth_plugin.sqlite
 snapshot.json
 
 .env
+*.sqlite
+*.sql
+*.db

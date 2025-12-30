@@ -50,7 +50,7 @@ export const useAuthStore = defineStore('auth', () => {
                     if (verifyResponse?.data?.user) {
                         user.value = verifyResponse.data.user
                     }
-                } catch (e) {
+                } catch {
                     // console.error("Failed to fetch user details:", e)
                     // Optional: handle error, maybe logout if verify fails?
                 }
@@ -145,7 +145,7 @@ export const useAuthStore = defineStore('auth', () => {
             if (accessToken.value) {
                 await AuthService.logout(accessToken.value)
             }
-        } catch (err) {
+        } catch {
             // console.error("Logout error", err)
         } finally {
             user.value = null

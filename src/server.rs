@@ -37,6 +37,21 @@ async fn healthcheck() -> impl Responder {
         .body("OK")
 }
 
+/// Serves dynamic runtime configuration for the frontend.
+async fn serve_runtime_config() -> impl Responder {
+    let api_key = std::env::var("API_KEY").unwrap_or_default();
+    let endpoint = std::env::var("ENDPOINT").unwrap_or_else(|_| "http://localhost:5500".to_string());
+    
+    let config_content = format!(
+        "window.config = {{ API_KEY: \"{}\", ENDPOINT: \"{}\" }};",
+        api_key, endpoint
+    );
+
+    HttpResponse::Ok()
+        .content_type("application/javascript; charset=utf-8")
+        .body(config_content)
+}
+
 /// Initializes and runs the Actix-web server.
 ///
 /// This function performs the following initialization steps:
@@ -271,11 +286,13 @@ pub async fn run_server() -> std::io::Result<()> {
             .app_data(web::Data::new(auth_usecase_for_factory.clone()))
             .app_data(web::Data::new(user_details_usecase_for_factory.clone()))
             .app_data(web::Data::new(tenant_usecase_for_factory.clone()))
+            .app_data(web::Data::from(allowed_origins_for_factory.clone()))
             .wrap(PoweredByMiddleware)
             .wrap(RequestLoggerMiddleware)
             .wrap(middleware::Compress::default())
 
             .route("/health", web::get().to(healthcheck))
+            .route("/runtime-env.js", web::get().to(serve_runtime_config))
             
             .wrap(cors)
 

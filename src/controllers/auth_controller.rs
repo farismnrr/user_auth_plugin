@@ -3,7 +3,7 @@ use crate::dtos::change_password_dto::ChangePasswordRequest;
 use crate::dtos::response_dto::SuccessResponseDTO;
 use crate::errors::AppError;
 use crate::usecases::auth_usecase::AuthUseCase;
-use crate::validators::sso_validator::validate_sso_params;
+use crate::validators::sso_validator::{validate_sso_params, validate_redirect_uri_whitelist};
 use actix_web::{
     cookie::{Cookie, SameSite},
     web, HttpMessage, HttpResponse, Responder,
@@ -17,6 +17,7 @@ use crate::middlewares::api_key_middleware::TenantId;
 
 pub async fn register(
     usecase: web::Data<Arc<AuthUseCase>>,
+    allowed_origins: web::Data<Vec<String>>,
     body: web::Json<RegisterRequestJson>,
     req: actix_web::HttpRequest,
 ) -> Result<impl Responder, AppError> {
@@ -24,10 +25,13 @@ pub async fn register(
     let tenant_id = req.extensions()
         .get::<TenantId>()
         .map(|id| id.0)
-        .ok_or_else(|| AppError::Unauthorized("Tenant ID not found in request context".to_string()))?;
+        .ok_or_else(|| AppError::NotFound("Tenant ID not found in request context".to_string()))?;
 
     // Validate SSO params if present
     validate_sso_params(&body.state, &body.nonce, &body.redirect_uri)?;
+    
+    // Validate redirect_uri against allowed origins whitelist
+    validate_redirect_uri_whitelist(&body.redirect_uri, &allowed_origins)?;
 
     let register_req = RegisterRequest {
         username: body.username.clone(),
@@ -56,6 +60,7 @@ pub async fn register(
 /// In production, ensure `secure` is set to `true` when using HTTPS.
 pub async fn login(
     usecase: web::Data<Arc<AuthUseCase>>,
+    allowed_origins: web::Data<Vec<String>>,
     body: web::Json<LoginRequestJson>,
     req: actix_web::HttpRequest,
 ) -> Result<impl Responder, AppError> {
@@ -63,10 +68,13 @@ pub async fn login(
     let tenant_id = req.extensions()
         .get::<TenantId>()
         .map(|id| id.0)
-        .ok_or_else(|| AppError::Unauthorized("Tenant ID not found in request context".to_string()))?;
+        .ok_or_else(|| AppError::NotFound("Tenant ID not found in request context".to_string()))?;
 
     // Validate SSO params if present
     validate_sso_params(&body.state, &body.nonce, &body.redirect_uri)?;
+    
+    // Validate redirect_uri against allowed origins whitelist
+    validate_redirect_uri_whitelist(&body.redirect_uri, &allowed_origins)?;
 
     let login_req = LoginRequest {
         email_or_username: body.email_or_username.to_string(),
@@ -138,9 +146,13 @@ pub async fn logout(
 /// might not be available, relying solely on the HTTP-Only cookie.
 pub async fn sso_logout(
     usecase: web::Data<Arc<AuthUseCase>>,
+    allowed_origins: web::Data<Vec<String>>,
     query: web::Query<crate::dtos::auth_dto::SsoLogoutQuery>,
     req: actix_web::HttpRequest,
 ) -> Result<impl Responder, AppError> {
+    // Validate redirect_uri against allowed origins whitelist
+    validate_redirect_uri_whitelist(&query.redirect_uri, &allowed_origins)?;
+    
     // Attempt logout logic (delete session) - ignore errors (e.g. if already logged out)
     let _ = usecase.sso_logout(&req).await;
 

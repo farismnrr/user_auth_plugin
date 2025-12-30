@@ -33,7 +33,8 @@ export default [
                 setInterval: 'readonly',
                 clearInterval: 'readonly',
                 alert: 'readonly',
-                URLSearchParams: 'readonly'
+                URLSearchParams: 'readonly',
+                URL: 'readonly'
             }
         }
     },

@@ -298,4 +298,24 @@ describe('POST /auth/register - Register User', () => {
         }
     });
 
+    // 16. Validation: Redirect URI not in allowed origins whitelist
+    test('Scenario 16: Redirect URI not in allowed origins', async () => {
+        try {
+            await axios.post(`${BASE_URL}/auth/register`, {
+                username: `whitelist_test_${Date.now()}`,
+                email: `whitelist_test_${Date.now()}@test.com`,
+                password: "StrongPassword123!",
+                role: "user",
+                redirect_uri: "https://evil-site.com/callback"
+            }, { headers: { 'X-API-Key': API_KEY } });
+            throw new Error('Should have failed');
+        } catch (error) {
+            expect(error.response.status).toBe(403);
+            expect(error.response.data).toEqual(expect.objectContaining({
+                status: false,
+                message: expect.stringMatching(/not in allowed origins|Forbidden/i)
+            }));
+        }
+    });
+
 });
