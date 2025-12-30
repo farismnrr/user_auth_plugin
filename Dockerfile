@@ -54,7 +54,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # ============================================================================
 # Stage 2: Build Vue Frontend
 # ============================================================================
-FROM node:22-slim AS frontend-builder
+FROM node:25-slim AS frontend-builder
 
 WORKDIR /app/web
 
@@ -77,7 +77,7 @@ RUN npm run build
 # Stage 2.5: E2E Testing (Quality Gate)
 # Dies if tests fail
 # ============================================================================
-FROM node:22-bookworm-slim AS e2e-tester
+FROM node:25-bookworm-slim AS e2e-tester
 
 # Install runtime deps for backend (backend compiled in debian-slim-bookworm context)
 RUN apt-get update && apt-get install -y \
