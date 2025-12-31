@@ -81,4 +81,12 @@ router.beforeEach(async (to, from, next) => {
     }
 })
 
+// Clear errors globally after each navigation
+router.afterEach(() => {
+    const authStore = useAuthStore()
+    if (authStore.error) {
+        authStore.error = null
+    }
+})
+
 export default router

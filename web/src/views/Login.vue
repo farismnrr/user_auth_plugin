@@ -19,10 +19,7 @@ const { currentQuote } = useQuotes()
 // Use shared SSO composable
 useSSO()
 
-// Clear errors when route changes
-watch(() => route.path, () => {
-    authStore.error = null
-})
+
 
 const handleLogin = async () => {
     await authStore.login(username.value, password.value)
