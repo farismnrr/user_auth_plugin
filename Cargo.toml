@@ -12,7 +12,7 @@ path = "src/lib.rs"
 [dependencies]
 # --- Web Framework ---
 actix-web = "4"
-actix-multipart = "0.6"
+actix-multipart = "0.7"
 actix-files = "0.6"
 actix-web-httpauth = "0.8"
 actix-cors = "0.7"
@@ -50,7 +50,7 @@ log = "0.4.29"
 env_logger = "0.11.8"
 
 # JWT authentication
-jsonwebtoken = "9"
+jsonwebtoken = "10"
 
 rocksdb = "0.24.0"
 
@@ -59,8 +59,8 @@ url = "2"
 
 [dev-dependencies]
 # Testing utilities
-mockall = "0.13"
-reqwest = { version = "0.12.25", features = ["json", "blocking", "multipart", "cookies"] }
+mockall = "0.14"
+reqwest = { version = "0.13.1", features = ["json", "blocking", "multipart", "cookies"] }
 serde_json = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
 
