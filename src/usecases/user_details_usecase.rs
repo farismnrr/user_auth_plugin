@@ -161,7 +161,8 @@ impl UserDetailsUseCase {
 
             let content_disposition = field.content_disposition();
             let filename = content_disposition
-                .get_filename()
+                .as_ref()
+                .and_then(|cd| cd.get_filename())
                 .ok_or_else(|| AppError::BadRequest("No filename provided".to_string()))?;
 
             // Validate file extension

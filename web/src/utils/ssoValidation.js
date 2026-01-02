@@ -1,6 +1,10 @@
-// Allowed origins whitelist - read from env or use defaults
-// For Vite: set VITE_ALLOWED_ORIGINS in .env (should match backend ALLOWED_ORIGINS)
-const envOrigins = import.meta.env.VITE_ALLOWED_ORIGINS
+import { ALLOWED_ORIGINS_CONFIG } from '../config'
+
+// Allowed origins whitelist - priority:
+// 1. Runtime config (from window.config)
+// 2. Build-time env (VITE_ALLOWED_ORIGINS)
+// 3. Defaults
+const envOrigins = ALLOWED_ORIGINS_CONFIG || import.meta.env.VITE_ALLOWED_ORIGINS
 
 const DEFAULT_ORIGINS = [
     'http://localhost:3000',
@@ -10,7 +14,7 @@ const DEFAULT_ORIGINS = [
 ]
 
 export const ALLOWED_ORIGINS = envOrigins
-    ? envOrigins.split(',').map(o => o.trim())
+    ? envOrigins.split(',').map(o => o.trim()).filter(o => o.length > 0)
     : DEFAULT_ORIGINS
 
 /**
@@ -24,6 +28,12 @@ export const isValidRedirectUri = (redirectUri) => {
 
     try {
         const url = new URL(redirectUri)
+
+        // Explicitly allow only http and https protocols to prevent XSS (like javascript: urls)
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            return false
+        }
+
         const origin = `${url.protocol}//${url.host}`
         return ALLOWED_ORIGINS.some(allowed => allowed === origin)
     } catch {

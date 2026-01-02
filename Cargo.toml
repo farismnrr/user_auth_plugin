@@ -50,7 +50,7 @@ log = "0.4.29"
 env_logger = "0.11.8"
 
 # JWT authentication
-jsonwebtoken = "10"
+jsonwebtoken = "9"
 
 rocksdb = "0.24.0"
 

@@ -38,13 +38,18 @@ async fn healthcheck() -> impl Responder {
 }
 
 /// Serves dynamic runtime configuration for the frontend.
-async fn serve_runtime_config() -> impl Responder {
+async fn serve_runtime_config(
+    allowed_origins: web::Data<Arc<Vec<String>>>,
+) -> impl Responder {
     let api_key = std::env::var("API_KEY").unwrap_or_default();
     let endpoint = std::env::var("ENDPOINT").unwrap_or_else(|_| "http://localhost:5500".to_string());
     
+    // Convert Vec<String> to a comma-separated string for the JS config
+    let origins_str = allowed_origins.join(",");
+    
     let config_content = format!(
-        "window.config = {{ API_KEY: \"{}\", ENDPOINT: \"{}\" }};",
-        api_key, endpoint
+        "window.config = {{ API_KEY: \"{}\", ENDPOINT: \"{}\", ALLOWED_ORIGINS: \"{}\" }};",
+        api_key, endpoint, origins_str
     );
 
     HttpResponse::Ok()
