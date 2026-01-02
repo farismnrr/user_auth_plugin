@@ -32,9 +32,8 @@ RUN mkdir -p src && echo "fn main() {}" > src/main.rs && \
     echo "pub fn lib() {}" > migration/src/lib.rs
 
 # Build dependencies (cached layer)
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    cargo build --release 2>/dev/null || true
+# Build dependencies (cached layer)
+RUN cargo build --release 2>/dev/null || true
 
 # Remove dummy files and copy real source code
 RUN rm -rf src migration/src
@@ -43,9 +42,7 @@ COPY src src/
 COPY migration/src migration/src/
 
 # Build the actual application
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    touch src/main.rs src/lib.rs migration/src/main.rs migration/src/lib.rs && \
+RUN touch src/main.rs src/lib.rs migration/src/main.rs migration/src/lib.rs && \
     cargo build --release --workspace && \
     strip --strip-debug target/release/user-auth-plugin && \
     strip --strip-debug target/release/migration && \
