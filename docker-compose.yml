@@ -7,7 +7,6 @@ services:
     env_file:
       - .env
     ports:
-    ports:
       - "5500:5500"
     volumes:
       - ./logs:/app/logs
