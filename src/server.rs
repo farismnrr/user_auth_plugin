@@ -39,7 +39,7 @@ async fn healthcheck() -> impl Responder {
 
 /// Serves dynamic runtime configuration for the frontend.
 async fn serve_runtime_config(
-    allowed_origins: web::Data<Arc<Vec<String>>>,
+    allowed_origins: web::Data<Vec<String>>,
 ) -> impl Responder {
     let api_key = std::env::var("API_KEY").unwrap_or_default();
     let endpoint = std::env::var("ENDPOINT").unwrap_or_else(|_| "http://localhost:5500".to_string());
