@@ -32,7 +32,6 @@ RUN mkdir -p src && echo "fn main() {}" > src/main.rs && \
     echo "pub fn lib() {}" > migration/src/lib.rs
 
 # Build dependencies (cached layer)
-# Build dependencies (cached layer)
 RUN cargo build --release 2>/dev/null || true
 
 # Remove dummy files and copy real source code
