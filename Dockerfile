@@ -29,10 +29,12 @@ COPY src/domains/tenant/migration/Cargo.toml src/domains/tenant/migration/
 # Create dummy source files for dependency caching
 RUN mkdir -p src && echo "fn main() {}" > src/main.rs && \
     echo "pub fn lib() {}" > src/lib.rs && \
-    mkdir -p src/domains/user/migration/src && echo "fn main() {}" > src/domains/user/migration/src/main.rs && \
-    echo "pub fn lib() {}" > src/domains/user/migration/src/lib.rs && \
-    mkdir -p src/domains/tenant/migration/src && echo "fn main() {}" > src/domains/tenant/migration/src/main.rs && \
-    echo "pub fn lib() {}" > src/domains/tenant/migration/src/lib.rs
+    mkdir -p migration/src && echo "fn main() {}" > migration/src/main.rs && \
+    echo "pub fn lib() {}" > migration/src/lib.rs
+
+# Copy Cargo.toml files
+COPY Cargo.toml ./
+COPY migration/Cargo.toml migration/
 
 # Build dependencies (cached layer)
 RUN cargo build --release 2>/dev/null || true
