@@ -43,7 +43,7 @@ COPY src/domains/user/migration src/domains/user/migration/
 COPY src/domains/tenant/migration src/domains/tenant/migration/
 
 # Build the actual application
-    cargo build --release --workspace && \
+RUN cargo build --release --workspace && \
     strip --strip-debug target/release/user-auth-plugin && \
     strip --strip-debug target/release/user_migration && \
     strip --strip-debug target/release/tenant_migration && \
