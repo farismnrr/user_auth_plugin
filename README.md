@@ -59,7 +59,7 @@ Ensure you have the following installed:
 Start a PostgreSQL container (required by `Makefile`):
 
 ```bash
-docker run --name postgres-sql -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:alpine
+make start-postgres
 ```
 
 ### 3. Configuration

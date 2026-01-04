@@ -161,15 +161,15 @@ update:
 
 # --- PostgreSQL Management ---
 
-# Start PostgreSQL container (from Postgres-Production)
+# Start PostgreSQL container
 start-postgres:
 	@echo "🐘 Starting PostgreSQL container..."
-	@cd ../Postgres-Production && make start
+	@docker start postgres-sql || docker run --name postgres-sql -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:alpine
 
 # Stop PostgreSQL container
 stop-postgres:
 	@echo "🛑 Stopping PostgreSQL container..."
-	@cd ../Postgres-Production && make stop
+	@docker stop postgres-sql || true
 
 # Run all tests
 test: start-postgres
@@ -240,13 +240,15 @@ migrate-up:
 	@echo "⬆️  Running database migrations..."
 	@echo "📦 Ensuring database exists..."
 	@$(create_db_if_not_exists)
-	@$(load_env_and_db_url); cd migration && cargo run -- up
+	@$(load_env_and_db_url); cd src/domains/user/migration && cargo run -- up
+	@$(load_env_and_db_url); cd src/domains/tenant/migration && cargo run -- up
 	@echo "✅ Migrations completed"
 
 # Rollback last migration
 migrate-down:
 	@echo "⬇️  Rolling back last migration..."
-	@$(load_env_and_db_url); cd migration && cargo run -- down
+	@$(load_env_and_db_url); cd src/domains/tenant/migration && cargo run -- down
+	@$(load_env_and_db_url); cd src/domains/user/migration && cargo run -- down
 	@echo "✅ Rollback completed"
 
 # Fresh migration (drop all and re-run)
@@ -254,7 +256,8 @@ migrate-fresh:
 	@echo "🔄 Running fresh migrations..."
 	@echo "📦 Ensuring database exists..."
 	@$(create_db_if_not_exists)
-	@$(load_env_and_db_url); cd migration && cargo run -- fresh
+	@$(load_env_and_db_url); cd src/domains/user/migration && cargo run -- fresh
+	@$(load_env_and_db_url); cd src/domains/tenant/migration && cargo run -- fresh
 	@echo "✅ Fresh migrations completed"
 
 # Reset database (fresh migrations)

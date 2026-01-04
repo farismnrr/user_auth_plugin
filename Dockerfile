@@ -23,28 +23,30 @@ WORKDIR /app
 
 # Copy Cargo files first for dependency caching
 COPY Cargo.toml Cargo.lock ./
-COPY migration/Cargo.toml migration/
+COPY src/domains/user/migration/Cargo.toml src/domains/user/migration/
+COPY src/domains/tenant/migration/Cargo.toml src/domains/tenant/migration/
 
 # Create dummy source files for dependency caching
 RUN mkdir -p src && echo "fn main() {}" > src/main.rs && \
     echo "pub fn lib() {}" > src/lib.rs && \
-    mkdir -p migration/src && echo "fn main() {}" > migration/src/main.rs && \
-    echo "pub fn lib() {}" > migration/src/lib.rs
+    mkdir -p src/domains/user/migration/src && echo "fn main() {}" > src/domains/user/migration/src/main.rs && \
+    echo "pub fn lib() {}" > src/domains/user/migration/src/lib.rs && \
+    mkdir -p src/domains/tenant/migration/src && echo "fn main() {}" > src/domains/tenant/migration/src/main.rs && \
+    echo "pub fn lib() {}" > src/domains/tenant/migration/src/lib.rs
 
 # Build dependencies (cached layer)
 RUN cargo build --release 2>/dev/null || true
 
 # Remove dummy files and copy real source code
-RUN rm -rf src migration/src
-
 COPY src src/
-COPY migration/src migration/src/
+COPY src/domains/user/migration src/domains/user/migration/
+COPY src/domains/tenant/migration src/domains/tenant/migration/
 
 # Build the actual application
-RUN touch src/main.rs src/lib.rs migration/src/main.rs migration/src/lib.rs && \
     cargo build --release --workspace && \
     strip --strip-debug target/release/user-auth-plugin && \
-    strip --strip-debug target/release/migration && \
+    strip --strip-debug target/release/user_migration && \
+    strip --strip-debug target/release/tenant_migration && \
     ls -la target/release
 
 # ============================================================================
@@ -87,8 +89,8 @@ WORKDIR /app
 
 # Copy backend binary from builder
 COPY --from=rust-builder /app/target/release/user-auth-plugin ./
-COPY --from=rust-builder /app/target/release/migration ./
-
+COPY --from=rust-builder /app/target/release/user_migration ./
+COPY --from=rust-builder /app/target/release/tenant_migration ./migration
 # Copy test files
 COPY tests/e2e ./tests/e2e
 
@@ -114,7 +116,7 @@ WORKDIR /app
 # 3. Wait for Healthcheck
 # 4. Run Tests
 # 5. Fail build if any step fails
-RUN ./migration fresh && \
+RUN ./user_migration up && ./tenant_migration up && \
     (./user-auth-plugin & echo $! > server_pid) && \
     echo "Waiting for server to start..." && \
     sleep 2 && \
@@ -145,10 +147,11 @@ WORKDIR /app
 
 # Copy backend binary
 COPY --from=rust-builder /app/target/release/user-auth-plugin ./user-auth-plugin
-COPY --from=rust-builder /app/target/release/migration ./migration
+COPY --from=rust-builder /app/target/release/user_migration ./user/migration/user_migration
+COPY --from=rust-builder /app/target/release/tenant_migration ./tenant/migration/tenant_migration
 
 # Hardening: Make binaries immutable
-RUN chmod 0555 ./user-auth-plugin ./migration
+RUN chmod 0555 ./user-auth-plugin ./user/migration/user_migration ./tenant/migration/tenant_migration
 
 # Copy frontend build output
 COPY --from=frontend-builder /app/web/dist ./web/dist

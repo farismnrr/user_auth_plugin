@@ -5,17 +5,8 @@
 //! authentication, rate limiting, and comprehensive API endpoints.
 
 mod server;
-mod infrastructures;
-mod middlewares;
-mod dtos;
-mod entities;
-mod repositories;
-mod usecases;
-mod controllers;
-mod routes;
-mod errors;
-mod utils;
-mod validators;
+
+mod domains;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

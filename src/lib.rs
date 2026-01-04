@@ -4,14 +4,11 @@
 //! It provides access to entities, repositories, use cases, controllers, routes,
 //! error handling, utilities, validators, DTOs, middlewares, and infrastructure components.
 
-pub mod entities;
-pub mod repositories;
-pub mod usecases;
-pub mod controllers;
-pub mod routes;
-pub mod errors;
-pub mod utils;
-pub mod validators;
-pub mod dtos;
-pub mod middlewares;
-pub mod infrastructures;
+// pub mod entities; // moved to domains
+// pub mod repositories; // moved to domains
+
+// pub mod errors; // moved to common
+// pub mod utils; // moved to common
+
+pub mod domains;
+

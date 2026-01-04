@@ -9,24 +9,13 @@ use std::io::Write;
 use log::info;
 use std::sync::OnceLock;
 
-use crate::repositories::user_repository::UserRepository;
-use crate::repositories::user_details_repository::UserDetailsRepository;
-use crate::repositories::user_session_repository::UserSessionRepository;
-use crate::repositories::user_activity_log_repository::UserActivityLogRepository;
-use crate::repositories::tenant_repository::TenantRepository;
-use crate::repositories::user_tenant_repository::UserTenantRepository;
-use crate::usecases::user_usecase::UserUseCase;
-use crate::usecases::auth_usecase::AuthUseCase;
-use crate::usecases::user_details_usecase::UserDetailsUseCase;
-use crate::usecases::tenant_usecase::TenantUseCase;
-use crate::routes::user_routes;
-use crate::routes::auth_routes;
-use crate::routes::tenant_routes;
+use crate::domains::auth::auth_module::AuthModule;
+use crate::domains::user::user_module::UserModule;
+use crate::domains::tenant::tenant_module::TenantModule;
 
-
-use crate::middlewares::powered_by_middleware::PoweredByMiddleware;
-use crate::middlewares::request_logger_middleware::RequestLoggerMiddleware;
-use crate::infrastructures::postgres_connection;
+use crate::domains::common::middlewares::powered_by_middleware::PoweredByMiddleware;
+use crate::domains::common::middlewares::request_logger_middleware::RequestLoggerMiddleware;
+use crate::domains::common::infrastructures::postgres_connection;
 use std::sync::Arc;
 use tokio::sync::watch;
 
@@ -151,13 +140,6 @@ pub async fn run_server() -> std::io::Result<()> {
     // 🗄️ DATABASE SECTION
     // ================================================================================================
     //
-    // Initializes the asynchronous Postgres connection pool.
-    // This pool allows multiple concurrent database operations throughout the application.
-
-    // ================================================================================================
-    // 🗄️ DATABASE SECTION
-    // ================================================================================================
-    //
     // Initializes the asynchronous Database connection pool.
     // This pool allows multiple concurrent database operations throughout the application.
     // It selects between Postgres and SQLite based on DB_TYPE environment variable.
@@ -173,53 +155,10 @@ pub async fn run_server() -> std::io::Result<()> {
     let db = match db_type.as_str() {
         "postgres" => postgres_connection::initialize().await
             .map_err(|e| std::io::Error::other(format!("Postgres initialization failed: {}", e)))?,
-        "sqlite" => crate::infrastructures::sqlite_connection::initialize().await
+        "sqlite" => crate::domains::common::infrastructures::sqlite_connection::initialize().await
             .map_err(|e| std::io::Error::other(format!("SQLite initialization failed: {}", e)))?,
         _ => return Err(std::io::Error::other(format!("Unsupported CORE_DB_TYPE: {}", db_type))),
     };
-
-    // ================================================================================================
-    // 📂 REPOSITORY SECTION
-    // ================================================================================================
-    //
-    // Instantiates the Data Access Layer (Repositories).
-    // Each repository provides an abstraction over database operations for specific entities.
-    // They are wrapped in `Arc` (Atomic Reference Counting) to allow thread-safe sharing
-    // across multiple potential threads in the server.
-
-    use crate::infrastructures::rocksdb_connection::RocksDbCache;
-    let cache = Arc::new(RocksDbCache::new_with_recovery("./rocksdb_cache")
-        .map_err(|e| std::io::Error::other(format!("Failed to initialize RocksDB cache: {}", e)))?);
-
-    let user_repository = Arc::new(UserRepository::new(db.clone(), cache.clone()));
-    let user_details_repository = Arc::new(UserDetailsRepository::new(db.clone(), cache.clone()));
-    let user_session_repository = Arc::new(UserSessionRepository::new(db.clone()));
-    let user_activity_log_repository = Arc::new(UserActivityLogRepository::new(db.clone()));
-    let tenant_repository = Arc::new(TenantRepository::new(db.clone(), cache.clone()));
-    let user_tenant_repository = Arc::new(UserTenantRepository::new(db.clone(), cache.clone()));
-
-    // ================================================================================================
-    // 🧠 USECASE SECTION
-    // ================================================================================================
-    //
-    // Instantiates the Business Logic Layer (UseCases).
-    // UseCases contain the core application rules and orchestrate data flow using Repositories.
-    // Like repositories, they are wrapped in `Arc` for thread-safe sharing.
-
-    let user_usecase = Arc::new(UserUseCase::new(
-        user_repository.clone(),
-        user_details_repository.clone(),
-        user_tenant_repository.clone()
-    ));
-    let auth_usecase = Arc::new(AuthUseCase::new(
-        user_repository.clone(),
-        user_details_repository.clone(),
-        user_tenant_repository.clone(),
-        user_session_repository.clone(),
-        user_activity_log_repository.clone(),
-    ));
-    let user_details_usecase = Arc::new(UserDetailsUseCase::new(user_details_repository.clone()));
-    let tenant_usecase = Arc::new(TenantUseCase::new(tenant_repository.clone()));
 
     // ================================================================================================
     // 🚀 SERVER SECTION
@@ -258,13 +197,15 @@ pub async fn run_server() -> std::io::Result<()> {
 
     info!("🚀 Actix server running on http://{}:{}", server_host, server_port);
 
-    let db_for_factory = db.clone();
+    // RocksDB Cache Initialization
+    use crate::domains::common::infrastructures::rocksdb_connection::RocksDbCache;
+    let cache = Arc::new(RocksDbCache::new_with_recovery("./rocksdb_cache")
+        .map_err(|e| std::io::Error::other(format!("Failed to initialize RocksDB cache: {}", e)))?);
 
+    // Prepare variables for the factory closure
+    let db_for_factory = db.clone();
+    let cache_for_factory = cache.clone();
     let secret_for_factory = secret_key.clone();
-    let user_usecase_for_factory = user_usecase.clone();
-    let auth_usecase_for_factory = auth_usecase.clone();
-    let user_details_usecase_for_factory = user_details_usecase.clone();
-    let tenant_usecase_for_factory = tenant_usecase.clone();
     let allowed_origins_for_factory = allowed_origins.clone();
 
     let server = HttpServer::new(move || {
@@ -277,21 +218,25 @@ pub async fn run_server() -> std::io::Result<()> {
         for origin in allowed_origins_for_factory.iter() {
             cors = cors.allowed_origin(origin);
         }
+        
+        let db = db_for_factory.clone();
+        let cache = cache_for_factory.clone();
 
         let mut app = App::new()
             .app_data(web::Data::from(secret_for_factory.clone()))
-            .app_data(web::Data::from(db_for_factory.clone()))
+            .app_data(web::Data::from(db.clone()))
             .app_data(web::JsonConfig::default()
-                .error_handler(crate::errors::json_error_handler::json_error_handler)
+                .error_handler(crate::domains::common::errors::json_error_handler::json_error_handler)
             )
             .app_data(web::PathConfig::default()
-                .error_handler(crate::errors::path_error_handler::path_error_handler)
+                .error_handler(crate::domains::common::errors::path_error_handler::path_error_handler)
             )
+            
+            // Register Modules
+            .configure(|cfg| AuthModule::configure(cfg, &db, &cache))
+            .configure(|cfg| UserModule::configure(cfg, &db, &cache))
+            .configure(|cfg| TenantModule::configure(cfg, &db, &cache))
 
-            .app_data(web::Data::new(user_usecase_for_factory.clone()))
-            .app_data(web::Data::new(auth_usecase_for_factory.clone()))
-            .app_data(web::Data::new(user_details_usecase_for_factory.clone()))
-            .app_data(web::Data::new(tenant_usecase_for_factory.clone()))
             .app_data(web::Data::from(allowed_origins_for_factory.clone()))
             .wrap(PoweredByMiddleware)
             .wrap(RequestLoggerMiddleware)
@@ -300,15 +245,7 @@ pub async fn run_server() -> std::io::Result<()> {
             .route("/health", web::get().to(healthcheck))
             .route("/runtime-env.js", web::get().to(serve_runtime_config))
             
-            .wrap(cors)
-
-            .service(
-                web::scope("/api")
-                    .configure(tenant_routes::configure_tenant_routes)
-                    .configure(user_routes::configure_user_routes)
-            )
-            
-            .configure(auth_routes::configure_routes);
+            .wrap(cors);
 
         // Only serve static files if web/dist exists (production mode)
         if std::path::Path::new("./web/dist").exists() {
@@ -343,7 +280,7 @@ pub async fn run_server() -> std::io::Result<()> {
     // Launch health monitor based on DB type
     match db_type.as_str() {
         "postgres" => postgres_connection::monitor_health(db.clone(), shutdown_tx.clone()),
-        "sqlite" => crate::infrastructures::sqlite_connection::monitor_health(db.clone(), shutdown_tx.clone()),
+        "sqlite" => crate::domains::common::infrastructures::sqlite_connection::monitor_health(db.clone(), shutdown_tx.clone()),
         _ => {} // Should not happen given earlier check
     }
     
@@ -379,7 +316,7 @@ pub async fn run_server() -> std::io::Result<()> {
     tokio::spawn(async move {
         match db_type_for_shutdown.as_str() {
             "postgres" => postgres_connection::shutdown(db_for_shutdown, db_rx).await,
-            "sqlite" => crate::infrastructures::sqlite_connection::shutdown(db_for_shutdown, db_rx).await,
+            "sqlite" => crate::domains::common::infrastructures::sqlite_connection::shutdown(db_for_shutdown, db_rx).await,
             _ => {}
         }
     });
