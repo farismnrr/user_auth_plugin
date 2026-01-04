@@ -239,15 +239,13 @@ migrate-up:
 	@echo "⬆️  Running database migrations..."
 	@echo "📦 Ensuring database exists..."
 	@$(create_db_if_not_exists)
-	@$(load_env_and_db_url); cd src/domains/user/migration && cargo run -- up
-	@$(load_env_and_db_url); cd src/domains/tenant/migration && cargo run -- up
+	@$(load_env_and_db_url); cd migration && cargo run -- up
 	@echo "✅ Migrations completed"
 
 # Rollback last migration
 migrate-down:
 	@echo "⬇️  Rolling back last migration..."
-	@$(load_env_and_db_url); cd src/domains/tenant/migration && cargo run -- down
-	@$(load_env_and_db_url); cd src/domains/user/migration && cargo run -- down
+	@$(load_env_and_db_url); cd migration && cargo run -- down
 	@echo "✅ Rollback completed"
 
 # Fresh migration (drop all and re-run)
@@ -255,8 +253,7 @@ migrate-fresh:
 	@echo "🔄 Running fresh migrations..."
 	@echo "📦 Ensuring database exists..."
 	@$(create_db_if_not_exists)
-	@$(load_env_and_db_url); cd src/domains/user/migration && cargo run -- fresh
-	@$(load_env_and_db_url); cd src/domains/tenant/migration && cargo run -- fresh
+	@$(load_env_and_db_url); cd migration && cargo run -- fresh
 	@echo "✅ Fresh migrations completed"
 
 # Reset database (fresh migrations)
