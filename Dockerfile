@@ -32,10 +32,6 @@ RUN mkdir -p src && echo "fn main() {}" > src/main.rs && \
     mkdir -p migration/src && echo "fn main() {}" > migration/src/main.rs && \
     echo "pub fn lib() {}" > migration/src/lib.rs
 
-# Copy Cargo.toml files
-COPY Cargo.toml ./
-COPY migration/Cargo.toml migration/
-
 # Build dependencies (cached layer)
 RUN cargo build --release 2>/dev/null || true
 
