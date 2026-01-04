@@ -38,20 +38,12 @@ if [ "$CORE_DB_TYPE" != "sqlite" ] && [ "$CORE_DB_TYPE" != "postgres" ]; then
 fi
 
 # Run migrations
-echo "⬆️  Running user migrations..."
-if [ -f "/app/user_migration" ]; then
-    /app/user_migration up
-    echo "✅ User migrations completed"
+echo "⬆️  Running database migrations..."
+if [ -f "/app/migration" ]; then
+    /app/migration up
+    echo "✅ Migrations completed"
 else
-    echo "⚠️  User migration binary not found"
-fi
-
-echo "⬆️  Running tenant migrations..."
-if [ -f "/app/tenant_migration" ]; then
-    /app/tenant_migration up
-    echo "✅ Tenant migrations completed"
-else
-    echo "⚠️  Tenant migration binary not found"
+    echo "⚠️  Migration binary not found"
 fi
 
 # ============================================================================

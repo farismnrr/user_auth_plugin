@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "src/domains/user/migration", "src/domains/tenant/migration"]
+members = [".", "migration"]
 
 [package]
 name = "user-auth-plugin"
