@@ -39,8 +39,7 @@ RUN cargo build --release 2>/dev/null || true
 
 # Remove dummy files and copy real source code
 COPY src src/
-COPY src/domains/user/migration src/domains/user/migration/
-COPY src/domains/tenant/migration src/domains/tenant/migration/
+COPY migration migration/
 
 # Build the actual application
 RUN cargo build --release --workspace && \
