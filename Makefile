@@ -126,9 +126,11 @@ push:
 			exit 1; \
 		fi \
 	)
-	@echo "📦 Triggering workflow 'build-multitenant-user-management.yml'..."
-	@gh workflow run build-multitenant-user-management.yml --ref main
-	@echo "✅ Workflow dispatched. Track with 'gh run watch --latest'"
+	@TAG=$$(git describe --tags --abbrev=0 2>/dev/null || echo "main"); \
+	REF=$${REF:-$$TAG}; \
+	echo "📦 Triggering workflow 'build-multitenant-user-management.yml' with ref: $$REF..."; \
+	gh workflow run build-multitenant-user-management.yml --ref $$REF
+	@echo "✅ Workflow dispatched for ref: $$REF. Track with 'gh run watch --latest'"
 
 # --- Docker Compose Configuration ---
 
