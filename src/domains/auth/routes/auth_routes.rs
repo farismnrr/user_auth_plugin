@@ -19,11 +19,10 @@ use actix_web_httpauth::middleware::HttpAuthentication;
 /// - `PUT /change-password`
 pub fn configure_routes(
     cfg: &mut web::ServiceConfig,
-    auth_usecase: std::sync::Arc<crate::domains::auth::usecases::auth_usecase::AuthUseCase>,
 ) {
     let jwt_auth = HttpAuthentication::bearer(auth_middleware::validator);
     
-    cfg.app_data(web::Data::from(auth_usecase));
+    // AuthUseCase is now registered globally in server.rs
     
     cfg.service(
         web::scope("/auth")

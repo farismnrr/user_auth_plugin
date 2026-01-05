@@ -11,4 +11,5 @@
 // pub mod utils; // moved to common
 
 pub mod domains;
+pub mod server;
 

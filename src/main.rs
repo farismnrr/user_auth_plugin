@@ -4,11 +4,7 @@
 //! The application provides user management and authentication capabilities with JWT-based
 //! authentication, rate limiting, and comprehensive API endpoints.
 
-mod server;
-
-mod domains;
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    server::run_server().await
+    user_auth_plugin::server::run_server().await
 }

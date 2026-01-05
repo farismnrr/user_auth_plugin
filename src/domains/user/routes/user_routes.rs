@@ -24,13 +24,10 @@ use actix_web_httpauth::middleware::HttpAuthentication;
 /// All routes require JWT Bearer token authentication.
 pub fn configure_user_routes(
     cfg: &mut web::ServiceConfig,
-    user_usecase: std::sync::Arc<crate::domains::user::usecases::user_usecase::UserUseCase>,
-    user_details_usecase: std::sync::Arc<crate::domains::user::usecases::user_details_usecase::UserDetailsUseCase>,
 ) {
     let jwt_auth = HttpAuthentication::bearer(auth_middleware::validator);
     
-    cfg.app_data(web::Data::from(user_usecase))
-       .app_data(web::Data::from(user_details_usecase));
+    // UseCases are now registered globally in server.rs
 
     cfg.service(
         web::scope("/users")

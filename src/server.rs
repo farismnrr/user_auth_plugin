@@ -13,6 +13,20 @@ use crate::domains::auth::auth_module::AuthModule;
 use crate::domains::user::user_module::UserModule;
 use crate::domains::tenant::tenant_module::TenantModule;
 
+// Repositories
+use crate::domains::user::repositories::user_repository::UserRepository;
+use crate::domains::user::repositories::user_details_repository::UserDetailsRepository;
+use crate::domains::user::repositories::user_session_repository::UserSessionRepository;
+use crate::domains::user::repositories::user_activity_log_repository::UserActivityLogRepository;
+use crate::domains::tenant::repositories::user_tenant_repository::UserTenantRepository;
+use crate::domains::tenant::repositories::tenant_repository::TenantRepository;
+
+// UseCases
+use crate::domains::user::usecases::user_usecase::UserUseCase;
+use crate::domains::auth::usecases::auth_usecase::AuthUseCase;
+use crate::domains::user::usecases::user_details_usecase::UserDetailsUseCase;
+use crate::domains::tenant::usecases::tenant_usecase::TenantUseCase;
+
 use crate::domains::common::middlewares::powered_by_middleware::PoweredByMiddleware;
 use crate::domains::common::middlewares::request_logger_middleware::RequestLoggerMiddleware;
 use crate::domains::common::infrastructures::postgres_connection;
@@ -202,11 +216,44 @@ pub async fn run_server() -> std::io::Result<()> {
     let cache = Arc::new(RocksDbCache::new_with_recovery("./rocksdb_cache")
         .map_err(|e| std::io::Error::other(format!("Failed to initialize RocksDB cache: {}", e)))?);
 
+    // ================================================================================================
+    // 🧠 REPOSITORY SECTION
+    // ================================================================================================
+    let db_arc = db.clone();
+    let user_repo = Arc::new(UserRepository::new(db_arc.clone(), cache.clone()));
+    let user_details_repo = Arc::new(UserDetailsRepository::new(db_arc.clone(), cache.clone()));
+    let user_session_repo = Arc::new(UserSessionRepository::new(db_arc.clone()));
+    let user_activity_log_repo = Arc::new(UserActivityLogRepository::new(db_arc.clone()));
+    let user_tenant_repo = Arc::new(UserTenantRepository::new(db_arc.clone(), cache.clone()));
+    let tenant_repo = Arc::new(TenantRepository::new(db_arc.clone(), cache.clone()));
+
+    // ================================================================================================
+    // 🧠 USECASE SECTION
+    // ================================================================================================
+    let user_usecase = Arc::new(UserUseCase::new(
+        user_repo.clone(),
+        user_details_repo.clone(),
+        user_tenant_repo.clone(),
+    ));
+    let auth_usecase = Arc::new(AuthUseCase::new(
+        user_repo.clone(),
+        user_details_repo.clone(),
+        user_tenant_repo.clone(),
+        user_session_repo.clone(),
+        user_activity_log_repo.clone(),
+    ));
+    let user_details_usecase = Arc::new(UserDetailsUseCase::new(user_details_repo.clone()));
+    let tenant_usecase = Arc::new(TenantUseCase::new(tenant_repo.clone()));
+
     // Prepare variables for the factory closure
     let db_for_factory = db.clone();
-    let cache_for_factory = cache.clone();
     let secret_for_factory = secret_key.clone();
     let allowed_origins_for_factory = allowed_origins.clone();
+    
+    let user_usecase_for_factory = user_usecase.clone();
+    let auth_usecase_for_factory = auth_usecase.clone();
+    let user_details_usecase_for_factory = user_details_usecase.clone();
+    let tenant_usecase_for_factory = tenant_usecase.clone();
 
     let server = HttpServer::new(move || {
         let mut cors = actix_cors::Cors::default()
@@ -219,12 +266,9 @@ pub async fn run_server() -> std::io::Result<()> {
             cors = cors.allowed_origin(origin);
         }
         
-        let db = db_for_factory.clone();
-        let cache = cache_for_factory.clone();
-
         let mut app = App::new()
             .app_data(web::Data::from(secret_for_factory.clone()))
-            .app_data(web::Data::from(db.clone()))
+            .app_data(web::Data::from(db_for_factory.clone()))
             .app_data(web::JsonConfig::default()
                 .error_handler(crate::domains::common::errors::json_error_handler::json_error_handler)
             )
@@ -232,12 +276,17 @@ pub async fn run_server() -> std::io::Result<()> {
                 .error_handler(crate::domains::common::errors::path_error_handler::path_error_handler)
             )
             
-            // Register Modules
-            .configure(|cfg| AuthModule::configure(cfg, &db, &cache))
-            .configure(|cfg| UserModule::configure(cfg, &db, &cache))
-            .configure(|cfg| TenantModule::configure(cfg, &db, &cache))
-
+            // Register App Data
+            .app_data(web::Data::new(user_usecase_for_factory.clone()))
+            .app_data(web::Data::new(auth_usecase_for_factory.clone()))
+            .app_data(web::Data::new(user_details_usecase_for_factory.clone()))
+            .app_data(web::Data::new(tenant_usecase_for_factory.clone()))
             .app_data(web::Data::from(allowed_origins_for_factory.clone()))
+
+            // Register Modules
+            .configure(AuthModule::configure_module)
+            .configure(UserModule::configure_module)
+            .configure(TenantModule::configure_module)
             .wrap(PoweredByMiddleware)
             .wrap(RequestLoggerMiddleware)
             .wrap(middleware::Compress::default())

@@ -14,11 +14,10 @@ use actix_web_httpauth::middleware::HttpAuthentication;
 /// * `cfg` - Service configuration
 pub fn configure_tenant_routes(
     cfg: &mut web::ServiceConfig,
-    tenant_usecase: std::sync::Arc<crate::domains::tenant::usecases::tenant_usecase::TenantUseCase>,
 ) {
     let jwt_auth = HttpAuthentication::bearer(validator);
     
-    cfg.app_data(web::Data::from(tenant_usecase));
+    // TenantUseCase is now registered globally in server.rs
     let tenant_secret_auth = TenantSecretMiddleware;
     
     cfg.service(
