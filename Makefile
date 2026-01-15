@@ -17,7 +17,7 @@ help:
 	@echo "  make pull-docker      - Pull latest image for Docker Compose"
 	@echo "  make start-compose    - Start Docker Compose stack (pulls first)"
 	@echo "  make stop-compose     - Stop Docker Compose stack"
-	@echo "  make update    - Update running container using Watchtower"
+	@echo "  make update           - Update running container using Watchtower"
 	@echo "  make test             - Run all tests"
 	@echo "  make test-integration - Run integration tests (whitebox)"
 	@echo "  make test-e2e         - Run all E2E tests (Jest)"
@@ -148,15 +148,20 @@ stop-compose:
 	@echo "🛑 Stopping Docker Compose stack..."
 	docker compose down
 
-# Update running container using Watchtower
+# Update running container using Watchtower (pull, cleanup, restart)
 update:
-	@echo "🔄 Checking for updates with Watchtower..."
+	@echo "🔄 Updating container with Watchtower..."
+	@echo "  - Pulling latest image"
+	@echo "  - Removing orphans and old images"
+	@echo "  - Restarting with new version"
 	docker run --rm \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		--env DOCKER_API_VERSION=1.45 \
 		containrrr/watchtower \
+		--cleanup \
 		--run-once \
 		user_auth_plugin
+	@echo "✅ Update completed successfully"
 
 # --- PostgreSQL Management ---
 
@@ -263,8 +268,8 @@ db-reset: migrate-fresh
 # Clean build artifacts
 clean:
 	@echo "🧹 Cleaning build artifacts..."
-	cargo clean																																									
-	@echo "✅ Clean completed"																																		
+	cargo clean																																																																	
+	@echo "✅ Clean completed"																																																		
 
 # Kill process running on port 5500 (backend) and 5173 (frontend)
 kill:
