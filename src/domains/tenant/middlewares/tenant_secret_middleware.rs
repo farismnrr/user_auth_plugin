@@ -3,7 +3,6 @@
 //! This middleware validates tenant secret keys from the X-Tenant-Secret-Key header
 //! for tenant creation and bootstrapping operations.
 
-use std::env;
 use actix_web::{
     body::EitherBody,
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
@@ -33,8 +32,9 @@ where
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        let tenant_secret_key = env::var("TENANT_SECRET_KEY").unwrap_or_default();
-        ok(TenantSecretMiddlewareService { service, tenant_secret_key })
+        use crate::domains::common::utils::config::Config;
+        let tenant_secret_key = Config::get().tenant_secret_key.clone();
+        ok(TenantSecretMiddlewareService { service, tenant_secret_key })  
     }
 }
 

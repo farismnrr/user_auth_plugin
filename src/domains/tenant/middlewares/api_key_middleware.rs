@@ -1,4 +1,3 @@
-use std::env;
 use std::rc::Rc;
 use actix_web::{
     body::EitherBody,
@@ -37,7 +36,8 @@ where
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        let api_key = env::var("API_KEY").unwrap_or_default();
+        use crate::domains::common::utils::config::Config;
+        let api_key = Config::get().api_key.clone();
         ok(ApiKeyMiddlewareService { 
             service: Rc::new(service), 
             api_key 

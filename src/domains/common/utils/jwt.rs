@@ -50,23 +50,13 @@ impl JwtService {
     /// - `JWT_ACCESS_TOKEN_EXPIRY`: Access token lifetime in seconds (default: 900)
     /// - `JWT_REFRESH_TOKEN_EXPIRY`: Refresh token lifetime in seconds (default: 604800)
     pub fn new() -> Self {
-        let secret = std::env::var("JWT_SECRET")
-            .unwrap_or_else(|_| "default-secret-key".to_string());
-        
-        let access_token_expiry = std::env::var("JWT_ACCESS_TOKEN_EXPIRY")
-            .unwrap_or_else(|_| "900".to_string())
-            .parse::<i64>()
-            .unwrap_or(900);
-        
-        let refresh_token_expiry = std::env::var("JWT_REFRESH_TOKEN_EXPIRY")
-            .unwrap_or_else(|_| "604800".to_string())
-            .parse::<i64>()
-            .unwrap_or(604800);
+        use crate::domains::common::utils::config::Config;
+        let config = Config::get();
 
         Self {
-            secret,
-            access_token_expiry,
-            refresh_token_expiry,
+            secret: config.secret_key.clone(),
+            access_token_expiry: config.access_token_expiry,
+            refresh_token_expiry: config.refresh_token_expiry,
         }
     }
 
@@ -85,7 +75,12 @@ impl JwtService {
     /// # Errors
     ///
     /// Returns `jsonwebtoken::errors::Error` if token encoding fails.
-    pub fn generate_access_token(&self, user_id: Uuid, tenant_id: Uuid, role: String) -> Result<String, jsonwebtoken::errors::Error> {
+    pub fn generate_access_token(
+        &self,
+        user_id: Uuid,
+        tenant_id: Uuid,
+        role: String,
+    ) -> Result<String, jsonwebtoken::errors::Error> {
         let now = Utc::now();
         let exp = now + Duration::seconds(self.access_token_expiry);
 
@@ -122,7 +117,12 @@ impl JwtService {
     /// # Errors
     ///
     /// Returns `jsonwebtoken::errors::Error` if token encoding fails.
-    pub fn generate_refresh_token(&self, user_id: Uuid, tenant_id: Uuid, role: String) -> Result<String, jsonwebtoken::errors::Error> {
+    pub fn generate_refresh_token(
+        &self,
+        user_id: Uuid,
+        tenant_id: Uuid,
+        role: String,
+    ) -> Result<String, jsonwebtoken::errors::Error> {
         let now = Utc::now();
         let exp = now + Duration::seconds(self.refresh_token_expiry);
 
@@ -161,7 +161,7 @@ impl JwtService {
         let mut validation = Validation::default();
         validation.validate_nbf = true;
         validation.leeway = 0; // Strict checking
-        
+
         let token_data = decode::<Claims>(
             token,
             &DecodingKey::from_secret(self.secret.as_bytes()),

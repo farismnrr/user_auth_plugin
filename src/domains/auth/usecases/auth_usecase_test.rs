@@ -95,6 +95,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_login_success() {
+        // Initialize config for test
+        use crate::domains::common::utils::config::Config;
+        Config::init_for_test();
+        
         // Setup Mocks
         let mut mock_user_repo = MockUserRepository::new();
         let mock_details_repo = MockUserDetailsRepository::new();
@@ -183,6 +187,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_login_invalid_password() {
+        use crate::domains::common::utils::config::Config;
+        Config::init_for_test();
+        
         let mut mock_user_repo = MockUserRepository::new();
         let mock_details_repo = MockUserDetailsRepository::new();
         let mock_tenant_repo = MockUserTenantRepository::new();
@@ -248,6 +255,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_success() {
+        use crate::domains::common::utils::config::Config;
+        Config::init_for_test();
+        
         let mut mock_user_repo = MockUserRepository::new();
         let mut mock_details_repo = MockUserDetailsRepository::new();
         let mut mock_tenant_repo = MockUserTenantRepository::new();
@@ -312,6 +322,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_admin_success() {
+        use crate::domains::common::utils::config::Config;
+        Config::init_for_test();
+        
         let mut mock_user_repo = MockUserRepository::new();
         let mut mock_details_repo = MockUserDetailsRepository::new();
         let mut mock_tenant_repo = MockUserTenantRepository::new();
@@ -378,6 +391,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_admin_failure_invalid_code() {
+        use crate::domains::common::utils::config::Config;
+        Config::init_for_test();
+        
         let mock_user_repo = MockUserRepository::new();
         let mock_details_repo = MockUserDetailsRepository::new();
         let mock_tenant_repo = MockUserTenantRepository::new();

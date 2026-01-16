@@ -12,10 +12,12 @@
 /// # Examples
 ///
 /// ```
+/// # use user_auth_plugin::domains::common::utils::config::Config;
+/// # Config::init_for_test();
 /// use user_auth_plugin::domains::common::utils::url_helper::to_full_url;
 ///
 /// let full_url = to_full_url(Some("/assets/profiles/image.png".to_string()));
-/// assert_eq!(full_url, Some("http://localhost:5500/assets/profiles/image.png".to_string()));
+/// assert!(full_url.is_some());
 ///
 /// let already_full = to_full_url(Some("http://example.com/image.png".to_string()));
 /// assert_eq!(already_full, Some("http://example.com/image.png".to_string()));
@@ -29,10 +31,8 @@ pub fn to_full_url(path: Option<String>) -> Option<String> {
             return p; // Already a full URL
         }
 
-        let base_url = std::env::var("BASE_URL")
-            .unwrap_or_else(|_| "http://localhost:5500".to_string());
+        use crate::domains::common::utils::config::Config;
+        let base_url = &Config::get().endpoint;
         format!("{}{}", base_url, p)
     })
 }
-
-

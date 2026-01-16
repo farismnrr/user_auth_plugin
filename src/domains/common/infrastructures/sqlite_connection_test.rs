@@ -4,19 +4,8 @@ use std::env;
 
 #[tokio::test]
 async fn test_sqlite_initialize_file_naming() {
-    // Arrange
-    env::set_var("CORE_DB_NAME", "test_db");
-    
-    // Act & Assert
-    // We can't easily verify the internal url construction without mocking or inspecting logging.
-    // However, we can run it. Since it uses a file, it might create one?
-    // "sqlite://test_db.sqlite?mode=rwc"
-    
-    // For unit testing initialization logic, we might need to trust the side effects or return value.
-    // Since it returns Arc<DatabaseConnection>, we can check if it's Ok.
-    
-    // Note: This test might create "test_db.sqlite" on disk.
-    // usage of tempfile would be better if we could inject path, but the func uses env var only.
+    use crate::domains::common::utils::config::Config;
+    Config::init_for_test();
     
     // Clean up potentially
     let _ = std::fs::remove_file("test_db.sqlite");

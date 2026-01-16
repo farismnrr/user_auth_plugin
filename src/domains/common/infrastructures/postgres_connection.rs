@@ -29,15 +29,18 @@ use tokio::sync::watch;
 pub async fn initialize() -> anyhow::Result<Arc<DatabaseConnection>> {
     dotenvy::dotenv().ok();
     
-    let host = std::env::var("CORE_DB_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let port = std::env::var("CORE_DB_PORT").unwrap_or_else(|_| "5432".to_string());
-    let user = std::env::var("CORE_DB_USER").unwrap_or_else(|_| "postgres".to_string());
-    let pass = std::env::var("CORE_DB_PASS").unwrap_or_else(|_| "postgres".to_string());
-    let name = std::env::var("CORE_DB_NAME").unwrap_or_else(|_| "user_auth_plugin".to_string());
+    use crate::domains::common::utils::config::Config;
+    let config = Config::get();
+    
+    let host = &config.db_host;
+    let port = &config.db_port;
+    let user = &config.db_user;
+    let pass = &config.db_pass;
+    let name = &config.db_name;
 
     log::info!("Connecting to Postgres at {}:{}/{}", host, port, name);
     
-    let db = try_connect(&host, &port, &user, &pass, &name).await?;
+    let db = try_connect(host, port, user, pass, name).await?;
     
     log::info!("✅ Postgres connected successfully");
     Ok(Arc::new(db))

@@ -44,16 +44,16 @@ async fn healthcheck() -> impl Responder {
 async fn serve_runtime_config(
     allowed_origins: web::Data<Vec<String>>,
 ) -> impl Responder {
+    use crate::domains::common::utils::config::Config;
+    let config = Config::get();
     info!("Serving runtime config with allowed origins: {:?}", allowed_origins.get_ref());
-    let api_key = std::env::var("API_KEY").unwrap_or_default();
-    let endpoint = std::env::var("ENDPOINT").unwrap_or_else(|_| "http://localhost:5500".to_string());
     
     // Convert Vec<String> to a comma-separated string for the JS config
     let origins_str = allowed_origins.join(",");
     
     let config_content = format!(
         "window.config = {{ API_KEY: \"{}\", ENDPOINT: \"{}\", ALLOWED_ORIGINS: \"{}\" }};",
-        api_key, endpoint, origins_str
+        config.api_key, config.endpoint, origins_str
     );
 
     HttpResponse::Ok()
@@ -74,6 +74,10 @@ async fn serve_runtime_config(
 
 pub async fn run_server() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
+    
+    // Initialize centralized configuration
+    use crate::domains::common::utils::config::Config;
+    let config = Config::init();
 
     // ================================================================================================
     // 📝 LOG SECTION
@@ -159,11 +163,7 @@ pub async fn run_server() -> std::io::Result<()> {
     // It selects between Postgres and SQLite based on DB_TYPE environment variable.
     // Default is SQLite if unspecified or empty.
 
-    let mut db_type = std::env::var("CORE_DB_TYPE").unwrap_or_else(|_| "sqlite".to_string());
-    if db_type.trim().is_empty() {
-        db_type = "sqlite".to_string();
-    }
-
+    let db_type = &config.db_type;
     info!("Database Type: {}", db_type);
 
     let db = match db_type.as_str() {
@@ -186,28 +186,16 @@ pub async fn run_server() -> std::io::Result<()> {
     //    - Static files ("/assets")
     //    - API Routes ("/api") protected by API Keys and JWT.
 
-    let secret_key = Arc::new(std::env::var("SECRET_KEY").unwrap_or_else(|_| {
-        info!("SECRET_KEY not set; using empty string for development");
-        String::new()
-    }));
+    let secret_key = Arc::new(config.secret_key.clone());
 
     // Create assets directory if it doesn't exist
     std::fs::create_dir_all("assets").ok();
 
-    // CORS Configuration - using VITE_ALLOWED_ORIGINS to share with frontend
-    let allowed_origins_raw = std::env::var("VITE_ALLOWED_ORIGINS").unwrap_or_else(|_| "http://localhost:3000".to_string());
-    let allowed_origins: Arc<Vec<String>> = Arc::new(
-        allowed_origins_raw.split(',')
-            .map(|s| s.trim().to_string())
-            .filter(|s| !s.is_empty())
-            .collect()
-    );
+    // CORS Configuration - from centralized config
+    let allowed_origins: Arc<Vec<String>> = Arc::new(config.allowed_origins.clone());
 
-    let server_host = std::env::var("SERVER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
-    let server_port: u16 = std::env::var("SERVER_PORT")
-        .unwrap_or_else(|_| "8080".to_string())
-        .parse()
-        .unwrap_or(8080);
+    let server_host = &config.server_host;
+    let server_port = config.server_port;
 
     info!("🚀 Actix server running on http://{}:{}", server_host, server_port);
 

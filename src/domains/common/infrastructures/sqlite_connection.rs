@@ -23,14 +23,13 @@ use tokio::sync::watch;
 ///
 /// Returns an error if the connection fails.
 pub async fn initialize() -> anyhow::Result<Arc<DatabaseConnection>> {
-    let name = std::env::var("CORE_DB_NAME")
-        .ok()
-        .filter(|n| !n.is_empty())
-        .unwrap_or_else(|| "user_auth_plugin.sqlite".to_string());
+    use crate::domains::common::utils::config::Config;
+    let config = Config::get();
+    
+    let name = &config.db_name;
     
     // Ensure .db or .sqlite extension if not present
-    // Ensure .db or .sqlite extension if not present
-    let mut db_filename = name;
+    let mut db_filename = name.clone();
     if !db_filename.ends_with(".db") && !db_filename.ends_with(".sqlite") {
         db_filename = format!("{}.sqlite", db_filename);
     }

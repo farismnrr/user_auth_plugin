@@ -9,12 +9,11 @@ use actix_web::HttpMessage;
 
 #[actix_web::test]
 async fn test_auth_middleware_validator_success() {
-    // 1. Setup Env for JwtService
-    std::env::set_var("JWT_SECRET", "test_secret_key_12345");
-    std::env::set_var("JWT_ACCESS_TOKEN_EXPIRY", "60");
-    std::env::set_var("JWT_REFRESH_TOKEN_EXPIRY", "120");
+    // Initialize config for test
+    use crate::domains::common::utils::config::Config;
+    Config::init_for_test();
     
-    // 2. Generate a valid token
+    // Generate a valid token
     use crate::domains::common::utils::jwt::JwtService;
     let jwt_service = JwtService::new();
     let user_id = uuid::Uuid::new_v4();
@@ -51,8 +50,9 @@ async fn test_auth_middleware_validator_success() {
 
 #[actix_web::test]
 async fn test_auth_middleware_validator_invalid_token() {
-    // 1. Setup Env
-    std::env::set_var("JWT_SECRET", "test_secret_key_12345");
+    // Initialize config for test
+    use crate::domains::common::utils::config::Config;
+    Config::init_for_test();
     
     // 2. Create Request with invalid token
     let req = test::TestRequest::default()
