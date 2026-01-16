@@ -9,8 +9,11 @@ This document covers parsing, storing, and using access tokens from the SSO serv
 The access token is returned in the URL hash fragment after successful authentication:
 
 ```
-https://your-app.com/auth/callback#access_token=eyJhbG...&state=xyz
+https://your-app.com/callback#access_token=eyJhbG...&state=xyz
 ```
+
+> [!IMPORTANT]
+> The `refresh_token` is NOT present in the URL hash. It is handled exclusively via a `HttpOnly`, `SameSite=None` cookie set on the SSO service domain.
 
 ### Extraction Code
 
@@ -48,51 +51,27 @@ This prevents the token from being:
 
 ### Recommended: In-Memory State
 
-The most secure approach is storing tokens in application memory:
+The most secure approach is storing tokens in application memory (state). This prevents the token from being accessed by malicious scripts (XSS) that might try to read from storage.
 
 ```typescript
-// Zustand (React)
+// Example: Zustand Store (React)
 const useAuthStore = create((set) => ({
     accessToken: null,
     setAccessToken: (token) => set({ accessToken: token }),
+    clearAuth: () => set({ accessToken: null }),
 }))
 
-// Pinia (Vue)
+// Example: Pinia Store (Vue)
 const useAuthStore = defineStore('auth', () => {
     const accessToken = ref(null)
-    return { accessToken }
+    const setAccessToken = (token) => { accessToken.value = token }
+    const clearAuth = () => { accessToken.value = null }
+    return { accessToken, setAccessToken, clearAuth }
 })
 ```
 
-**Pros:** Cannot be accessed by XSS attacks  
-**Cons:** Token lost on page refresh
-
-### Alternative: Session Storage
-
-For persistence across page navigation:
-
-```javascript
-// Store
-sessionStorage.setItem('access_token', token)
-
-// Retrieve
-const token = sessionStorage.getItem('access_token')
-
-// Clear
-sessionStorage.removeItem('access_token')
-```
-
-**Pros:** Survives page refresh, cleared when browser tab closes  
-**Cons:** Vulnerable to XSS if not careful
-
-### Not Recommended: Local Storage
-
-```javascript
-// Avoid for sensitive tokens
-localStorage.setItem('access_token', token)
-```
-
-**Cons:** Persists indefinitely, more exposed to XSS attacks
+> [!TIP]
+> Since the token is lost on page refresh, you should implement a **silent refresh** logic that calls the `/auth/refresh` endpoint when the application initializes.
 
 ---
 
@@ -102,12 +81,12 @@ localStorage.setItem('access_token', token)
 
 ```javascript
 async function fetchProtectedData() {
-    const token = sessionStorage.getItem('access_token')
+    const { accessToken } = useAuthStore.getState() // Get from store
     
     const response = await fetch('https://api.example.com/users/me', {
         method: 'GET',
         headers: {
-            'Authorization': `Bearer ${token}`,
+            'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
         },
     })
@@ -133,9 +112,9 @@ const api = axios.create({
 
 // Request interceptor - add token to all requests
 api.interceptors.request.use((config) => {
-    const token = sessionStorage.getItem('access_token')
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`
+    const { accessToken } = useAuthStore.getState()
+    if (accessToken) {
+        config.headers.Authorization = `Bearer ${accessToken}`
     }
     return config
 })
@@ -178,33 +157,12 @@ function isTokenExpired(token) {
 
 ```javascript
 function handleTokenExpiry() {
-    // Clear stored token
-    sessionStorage.removeItem('access_token')
+    // Clear state
+    const { clearAuth } = useAuthStore.getState()
+    clearAuth()
     
     // Redirect to login
-    window.location.href = '/auth/login'
-}
-```
-
-### Proactive Refresh (Optional)
-
-For better UX, check token expiry before it expires:
-
-```javascript
-function scheduleTokenCheck() {
-    const token = sessionStorage.getItem('access_token')
-    if (!token) return
-    
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    const expiresAt = payload.exp * 1000
-    const checkAt = expiresAt - (5 * 60 * 1000) // 5 minutes before expiry
-    
-    const delay = Math.max(0, checkAt - Date.now())
-    
-    setTimeout(() => {
-        // Either refresh token or prompt user to re-login
-        console.log('Token expiring soon, please re-authenticate')
-    }, delay)
+    window.location.href = '/login'
 }
 ```
 
@@ -229,8 +187,9 @@ function handleCallback() {
         throw new Error('No token received')
     }
     
-    // Store token
-    sessionStorage.setItem('access_token', accessToken)
+    // Store token in memory state
+    const { setAccessToken } = useAuthStore.getState()
+    setAccessToken(accessToken)
     
     // Clear URL
     window.history.replaceState(null, '', window.location.pathname)
@@ -241,24 +200,27 @@ function handleCallback() {
 
 // 3. Use token for API calls
 async function getUser() {
-    const token = sessionStorage.getItem('access_token')
+    const { accessToken } = useAuthStore.getState()
     const response = await fetch('/api/users/me', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${accessToken}` }
     })
     return response.json()
 }
 
 // 4. Logout
 async function logout() {
-    const token = sessionStorage.getItem('access_token')
+    const { accessToken, clearAuth } = useAuthStore.getState()
     
     await fetch('/auth/logout', {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 
+            'Authorization': `Bearer ${accessToken}`,
+            'X-API-Key': API_KEY
+        }
     })
     
-    sessionStorage.removeItem('access_token')
-    window.location.href = '/auth/login'
+    clearAuth()
+    window.location.href = '/login'
 }
 ```
 

@@ -90,6 +90,7 @@ Add environment variables to your frontend application:
 ```env
 NEXT_PUBLIC_SSO_URL=https://sso.example.com
 NEXT_PUBLIC_TENANT_ID=a1b2c3d4-e5f6-7890-abcd-ef1234567890
+NEXT_PUBLIC_API_KEY=your-api-key-here
 ```
 
 ### Vite (React/Vue)
@@ -133,6 +134,7 @@ See [Frontend Implementation](./04-frontend-implementation.md) for code examples
 |----------|---------|-------------|
 | `NEXT_PUBLIC_SSO_URL` | `https://sso.example.com` | SSO service base URL |
 | `NEXT_PUBLIC_TENANT_ID` | `uuid-here` | Your tenant identifier |
+| `NEXT_PUBLIC_API_KEY` | `key-here` | Required for token refresh and verification |
 
 ### Environment Variables (SSO Service)
 

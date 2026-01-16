@@ -23,13 +23,12 @@ src/
 │   ├── api/
 │   │   └── config/
 │   │       └── route.ts      # Server-side config endpoint
-│   ├── auth/
-│   │   ├── login/
-│   │   │   └── page.tsx      # Login redirect page
-│   │   ├── register/
-│   │   │   └── page.tsx      # Register redirect page
-│   │   └── callback/
-│   │       └── page.tsx      # Token handling page
+│   ├── login/
+│   │   └── page.tsx      # Login redirect page
+│   ├── register/
+│   │   └── page.tsx      # Register redirect page
+│   └── callback/
+│       └── page.tsx      # Token handling page
 │   └── dashboard/
 │       └── page.tsx          # Protected page
 └── store/
@@ -75,7 +74,7 @@ export async function GET(req: NextRequest) {
       headers: {
         "Content-Type": "application/json",
         Authorization: authHeader,
-        // "X-API-Key": process.env.API_KEY || "", // If required by your middleware
+        "X-API-Key": process.env.NEXT_PUBLIC_API_KEY || "", // Required for tenant validation
       },
     });
 
@@ -113,7 +112,7 @@ export default function LoginPage() {
                 const ssoUrl = config.ssoUrl
                 const tenantId = config.tenantId
                 const redirectUri = encodeURIComponent(
-                    `${window.location.origin}/auth/callback`
+                    `${window.location.origin}/callback`
                 )
 
                 // SSO will generate state/nonce automatically
@@ -157,8 +156,9 @@ function CallbackContent() {
             const accessToken = params.get('access_token')
 
             if (accessToken) {
-                // Store token securely
-                sessionStorage.setItem('access_token', accessToken)
+                // Store token in memory (Zustand state)
+                const { setAccessToken } = useAuthStore.getState()
+                setAccessToken(accessToken)
 
                 // Clear hash from URL for security
                 window.history.replaceState(null, '', window.location.pathname)
@@ -166,7 +166,7 @@ function CallbackContent() {
                 // Navigate to protected area
                 router.replace('/dashboard')
             } else {
-                router.replace('/auth/login')
+                router.replace('/login')
             }
         }
 
@@ -286,14 +286,14 @@ export function useSSO() {
     // SSO generates state/nonce automatically - client only needs tenant_id and redirect_uri
     const redirectToLogin = () => {
         const redirectUri = encodeURIComponent(
-            `${window.location.origin}/auth/callback`
+            `${window.location.origin}/callback`
         )
         window.location.href = `${config.ssoUrl}/login?tenant_id=${config.tenantId}&redirect_uri=${redirectUri}`
     }
 
     const redirectToRegister = () => {
         const redirectUri = encodeURIComponent(
-            `${window.location.origin}/auth/callback`
+            `${window.location.origin}/callback`
         )
         window.location.href = `${config.ssoUrl}/register?tenant_id=${config.tenantId}&redirect_uri=${redirectUri}`
     }
@@ -319,7 +319,8 @@ export function CallbackPage() {
         const accessToken = params.get('access_token')
 
         if (accessToken) {
-            sessionStorage.setItem('access_token', accessToken)
+            // Store in memory (e.g. via a hook or state management)
+            setAccessToken(accessToken)
             window.history.replaceState(null, '', window.location.pathname)
             navigate('/dashboard', { replace: true })
         } else {
@@ -347,14 +348,14 @@ export function useSSO() {
     // SSO generates state/nonce automatically - client only needs tenant_id and redirect_uri
     const redirectToLogin = () => {
         const redirectUri = encodeURIComponent(
-            `${window.location.origin}/auth/callback`
+            `${window.location.origin}/callback`
         )
         window.location.href = `${ssoUrl}/login?tenant_id=${tenantId}&redirect_uri=${redirectUri}`
     }
 
     const redirectToRegister = () => {
         const redirectUri = encodeURIComponent(
-            `${window.location.origin}/auth/callback`
+            `${window.location.origin}/callback`
         )
         window.location.href = `${ssoUrl}/register?tenant_id=${tenantId}&redirect_uri=${redirectUri}`
     }
@@ -487,7 +488,9 @@ onMounted(() => {
         const accessToken = params.get('access_token')
 
         if (accessToken) {
-            sessionStorage.setItem('access_token', accessToken)
+            // Note: In vanilla JS, a global variable or custom state object 
+            // should be used for in-memory storage.
+            window.accessToken = accessToken 
             window.history.replaceState(null, '', window.location.pathname)
             window.location.href = '/dashboard.html'
         } else {
