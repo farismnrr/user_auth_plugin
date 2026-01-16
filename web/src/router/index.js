@@ -73,8 +73,17 @@ router.beforeEach(async (to, from, next) => {
             sessionStorage.removeItem('sso_tenant_id')
             authStore.ssoState = null
             authStore.ssoNonce = null
-            const separator = redirectUri.includes('?') ? '&' : '?'
-            window.location.href = `${redirectUri}${separator}access_token=${authStore.accessToken}&state=${state}`
+
+            try {
+                const url = new URL(redirectUri)
+                const safeToken = encodeURIComponent(authStore.accessToken)
+                const safeState = encodeURIComponent(state)
+                url.hash = `access_token=${safeToken}&state=${safeState}`
+                window.location.href = url.toString()
+            } catch (e) {
+                console.error('Invalid redirect URL construction:', e)
+                next({ name: 'forbidden' })
+            }
         }
     } else {
         next()

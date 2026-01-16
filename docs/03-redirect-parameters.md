@@ -25,6 +25,29 @@ When initiating SSO login, your client application redirects users to:
 | `tenant_id` | ✅ Yes | UUID identifying your application |
 | `redirect_uri` | ✅ Yes | URL-encoded callback URL in your app |
 
+---
+
+## Security: Redirect URI Validation
+
+The SSO service maintains a whitelist of **Allowed Origins** (configured via `VITE_ALLOWED_ORIGINS`). 
+
+1. **Strict Validation**: Upon reaching the login or registration page, the SSO router extracts the `redirect_uri`.
+2. **Origin Match**: It validates that the protocol and host of the `redirect_uri` match one of the allowed origins.
+3. **Forbidden Redirect**: If the URI is invalid or its origin is not in the whitelist, the user is automatically redirected to the `/forbidden` page and the login flow is blocked.
+
+> [!IMPORTANT]
+> Ensure your application's domain (e.g., `http://localhost:3000` or `https://app.example.com`) is correctly added to the SSO service configuration.
+
+---
+
+## Session Persistence
+
+To ensure the SSO flow remains consistent across page refreshes or internal navigation, the service stores the following in `sessionStorage`:
+- `sso_redirect_uri`: The target callback URL.
+- `sso_tenant_id`: The application identifier.
+
+These are cleared once the final redirect back to your client application is performed.
+
 ### SSO-Generated (Automatic)
 
 These parameters are added by the SSO login page, **not by your client**:
@@ -143,6 +166,19 @@ function handleCallback() {
     }
 }
 ```
+
+---
+
+## Seamless Flow (Auto-Redirect)
+
+If a user is **already authenticated** in the SSO service (e.g., they have a valid session cookie) and visits the login or registration page with SSO parameters:
+
+1. **Verification**: The system detects the existing session.
+2. **Auto-Redirect**: The SSO service immediately redirects the user back to the `redirect_uri` with a fresh `access_token` and the current `state`.
+3. **User Experience**: The user experiences a seamless transition without seeing the login form again.
+
+> [!NOTE]
+> This behavior is handled automatically by the router guard in `router/index.js`.
 
 ---
 

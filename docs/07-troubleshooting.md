@@ -161,6 +161,28 @@ If users consistently see state errors, check SSO service logs for details.
 
 ---
 
+## Access Forbidden (Forbidden Page)
+
+### Problem
+
+User is redirected to the `/forbidden` page immediately upon opening the login or registration link.
+
+### Cause
+
+This occurs when the `redirect_uri` provided in the URL does not match any entry in the `VITE_ALLOWED_ORIGINS` whitelist. This is a security feature to prevent token leakage to unauthorized domains.
+
+### Solution
+
+1. **Verify the URL**: Check the `redirect_uri` parameter in your browser's address bar.
+2. **Check Configuration**: Ensure the origin (protocol + host, e.g., `http://localhost:3000`) matches exactly.
+3. **Update SSO Environment**:
+   - Open the SSO service `.env` file.
+   - Add your origin to `VITE_ALLOWED_ORIGINS` (comma-separated).
+   - **Restart the service** to apply changes.
+4. **Encoding**: Ensure the `redirect_uri` is properly URL-encoded when redirecting to SSO.
+
+---
+
 ## Redirect Loop
 
 ### Problem
