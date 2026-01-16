@@ -99,7 +99,7 @@ start-docker:
 	docker run --rm -it --network="host" --env-file .env $(DOCKER_IMAGE_NAME):$$tag
 
 # Push to GHCR (reads env vars) - Multi-arch build
-push-local: build-docker
+push-local:
 	@read -p "Enter Docker tag to push (default: latest): " tag; \
 	tag=$${tag:-latest}; \
 	echo "🚀 Pushing to GHCR with multi-arch build (amd64, arm64) - tag: $$tag..."; \
