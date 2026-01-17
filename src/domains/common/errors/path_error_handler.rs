@@ -1,5 +1,5 @@
-use actix_web::{error::PathError, HttpResponse};
 use crate::domains::common::dtos::response_dto::ErrorResponseDTO;
+use actix_web::{error::PathError, HttpResponse};
 
 /// Custom error handler for Path extraction errors.
 /// Returns 400 Bad Request with JSON body.
@@ -10,9 +10,7 @@ pub fn path_error_handler(err: PathError, _req: &actix_web::HttpRequest) -> acti
         details: Some(format!("{}", err)),
         result: None,
     };
-    
-    actix_web::error::InternalError::from_response(
-        err,
-        HttpResponse::BadRequest().json(resp)
-    ).into()
+
+    actix_web::error::InternalError::from_response(err, HttpResponse::BadRequest().json(resp))
+        .into()
 }

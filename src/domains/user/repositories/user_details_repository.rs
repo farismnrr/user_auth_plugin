@@ -1,12 +1,14 @@
-use crate::domains::user::entities::user_details::{self, Entity as UserDetailsEntity, Model as UserDetails};
 use crate::domains::common::errors::AppError;
+use crate::domains::common::infrastructures::rocksdb_connection::RocksDbCache;
+use crate::domains::user::entities::user_details::{
+    self, Entity as UserDetailsEntity, Model as UserDetails,
+};
 use async_trait::async_trait;
 use chrono::NaiveDate;
 use sea_orm::*;
 use std::sync::Arc;
-use uuid::Uuid;
-use crate::domains::common::infrastructures::rocksdb_connection::RocksDbCache;
 use std::time::Duration;
+use uuid::Uuid;
 
 /// Trait defining user_details repository operations.
 ///
@@ -15,10 +17,10 @@ use std::time::Duration;
 pub trait UserDetailsRepositoryTrait: Send + Sync {
     /// Creates a new user_details record with default profile picture.
     async fn create(&self, user_id: Uuid) -> Result<UserDetails, AppError>;
-    
+
     /// Finds user_details by user_id.
     async fn find_by_user_id(&self, user_id: Uuid) -> Result<Option<UserDetails>, AppError>;
-    
+
     /// Updates user_details text fields (excludes profile_picture_url).
     async fn update(
         &self,
@@ -28,7 +30,7 @@ pub trait UserDetailsRepositoryTrait: Send + Sync {
         address: Option<String>,
         date_of_birth: Option<NaiveDate>,
     ) -> Result<UserDetails, AppError>;
-    
+
     /// Updates only the profile_picture_url field.
     async fn update_profile_picture(
         &self,
@@ -60,17 +62,19 @@ impl UserDetailsRepository {
 impl UserDetailsRepositoryTrait for UserDetailsRepository {
     async fn create(&self, user_id: Uuid) -> Result<UserDetails, AppError> {
         let user_details = user_details::ActiveModel {
-            id: Set(Uuid::new_v4()),  // Generate UUID in repository
+            id: Set(Uuid::new_v4()), // Generate UUID in repository
             user_id: Set(user_id),
-            profile_picture_url: Set(Some("https://storage.googleapis.com/farismnrr-gclouds.appspot.com/default.png".to_string())),
-            created_at: Set(chrono::Utc::now().into()),
-            updated_at: Set(chrono::Utc::now().into()),
+            profile_picture_url: Set(Some(
+                "https://storage.googleapis.com/farismnrr-gclouds.appspot.com/default.png"
+                    .to_string(),
+            )),
+            created_at: Set(chrono::Utc::now()),
+            updated_at: Set(chrono::Utc::now()),
             full_name: Set(None),
             phone_number: Set(None),
             address: Set(None),
             date_of_birth: Set(None),
             deleted_at: Set(None),
-            ..Default::default()
         };
 
         let result = UserDetailsEntity::insert(user_details.clone())
@@ -99,7 +103,7 @@ impl UserDetailsRepositoryTrait for UserDetailsRepository {
     async fn find_by_user_id(&self, user_id: Uuid) -> Result<Option<UserDetails>, AppError> {
         let cache_key = format!("user_details:{}", user_id);
         if let Some(cached_details) = self.cache.get::<UserDetails>(&cache_key) {
-             return Ok(Some(cached_details));
+            return Ok(Some(cached_details));
         }
 
         let user_details = UserDetailsEntity::find()
@@ -130,7 +134,10 @@ impl UserDetailsRepositoryTrait for UserDetailsRepository {
     ) -> Result<UserDetails, AppError> {
         let existing = self.find_by_user_id(user_id).await?;
         if existing.is_none() {
-            return Err(AppError::NotFound(format!("User details not found for user {}", user_id)));
+            return Err(AppError::NotFound(format!(
+                "User details not found for user {}",
+                user_id
+            )));
         }
 
         let mut user_details: user_details::ActiveModel = existing.unwrap().into();
@@ -166,7 +173,10 @@ impl UserDetailsRepositoryTrait for UserDetailsRepository {
     ) -> Result<UserDetails, AppError> {
         let existing = self.find_by_user_id(user_id).await?;
         if existing.is_none() {
-            return Err(AppError::NotFound(format!("User details not found for user {}", user_id)));
+            return Err(AppError::NotFound(format!(
+                "User details not found for user {}",
+                user_id
+            )));
         }
 
         let mut user_details: user_details::ActiveModel = existing.unwrap().into();

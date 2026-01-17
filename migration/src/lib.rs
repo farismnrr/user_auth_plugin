@@ -1,7 +1,7 @@
 pub use sea_orm_migration::prelude::*;
 
-mod users;
 mod tenants;
+mod users;
 
 pub struct Migrator;
 
@@ -17,6 +17,7 @@ impl MigratorTrait for Migrator {
             // Tenant domain migrations
             Box::new(tenants::M20250111CreateTenantsTable),
             Box::new(tenants::M20250111CreateUserTenantsJunction),
+            Box::new(tenants::M20250116AddApiKeyToTenants),
         ]
     }
 }

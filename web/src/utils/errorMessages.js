@@ -57,6 +57,13 @@ export function parseError(error) {
 
         // Network/System errors (4xx/5xx - system errors)
         case 404:
+            // Handle specific resource not found errors from API (e.g. "User not found")
+            if (apiMessage) {
+                return {
+                    message: apiMessage,
+                    type: ERROR_TYPES.CREDENTIAL
+                }
+            }
             return {
                 message: 'Authentication service not found. Please contact support.',
                 type: ERROR_TYPES.NETWORK

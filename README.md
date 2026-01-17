@@ -36,10 +36,20 @@ This service implements a local persistent cache using [RocksDB](https://rocksdb
 This service exposes two API scopes with different authentication mechanisms:
 
 1.  **Public / API Key Protected (`/api` prefix)**
-    *   Requires `X-API-Key` header.
+    *   Requires `X-API-Key` header (for Auth/User) or `X-Tenant-Secret-Key` (for Tenant creation).
     *   Endpoints: `/api/auth/login`, `/api/auth/register`, `/api/auth/refresh`.
 
 2.  **Protected / JWT (`/` root scope)**
+    *   Requires `Authorization: Bearer <token>` header.
+    *   Endpoints: `/auth/logout`, `/auth/verify`, `/auth/change-password`, `/users/*`, `/tenants/*`.
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `JWT_SECRET` | Secret key for signing JWT tokens |
+| `TENANT_SECRET_KEY` | Secret key for creating tenants via API |
+| `API_KEY` | Global API Key for auth endpoints |
     *   Requires `Authorization: Bearer <token>` header.
     *   Endpoints: `/auth/logout`, `/auth/verify`, `/auth/change-password`, `/users/*`, `/tenants/*`.
 

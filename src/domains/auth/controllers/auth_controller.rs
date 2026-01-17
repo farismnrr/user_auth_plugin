@@ -1,9 +1,13 @@
-use crate::domains::user::dtos::auth_dto::{LoginRequest, LoginRequestJson, RegisterRequest, RegisterRequestJson};
-use crate::domains::user::dtos::change_password_dto::ChangePasswordRequest;
+use crate::domains::auth::usecases::auth_usecase::AuthUseCase;
 use crate::domains::common::dtos::response_dto::SuccessResponseDTO;
 use crate::domains::common::errors::AppError;
-use crate::domains::auth::usecases::auth_usecase::AuthUseCase;
-use crate::domains::common::validators::sso_validator::{validate_sso_params, validate_redirect_uri_whitelist};
+use crate::domains::common::validators::sso_validator::{
+    validate_redirect_uri_whitelist, validate_sso_params,
+};
+use crate::domains::user::dtos::auth_dto::{
+    LoginRequest, LoginRequestJson, RegisterRequest, RegisterRequestJson,
+};
+use crate::domains::user::dtos::change_password_dto::ChangePasswordRequest;
 use actix_web::{
     cookie::{Cookie, SameSite},
     web, HttpMessage, HttpResponse, Responder,
@@ -22,14 +26,15 @@ pub async fn register(
     req: actix_web::HttpRequest,
 ) -> Result<impl Responder, AppError> {
     // Extract tenant_id from request extensions (set by ApiKeyMiddleware)
-    let tenant_id = req.extensions()
+    let tenant_id = req
+        .extensions()
         .get::<TenantId>()
         .map(|id| id.0)
         .ok_or_else(|| AppError::NotFound("Tenant ID not found in request context".to_string()))?;
 
     // Validate SSO params if present
     validate_sso_params(&body.state, &body.nonce, &body.redirect_uri)?;
-    
+
     // Validate redirect_uri against allowed origins whitelist
     validate_redirect_uri_whitelist(&body.redirect_uri, &allowed_origins)?;
 
@@ -64,13 +69,12 @@ pub async fn generate_invitation_code(
 ) -> Result<impl Responder, AppError> {
     let code = usecase.generate_invitation_code().await?;
 
-    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
-        "Invitation code generated successfully",
-        serde_json::json!({
-            "code": code,
-            "ttl_seconds": 3600
-        }),
-    )))
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": true,
+        "message": "Invitation code generated successfully",
+        "code": code,
+        "ttl_seconds": 3600
+    })))
 }
 
 /// Authenticates a user and returns access token with refresh token cookie.
@@ -84,14 +88,15 @@ pub async fn login(
     req: actix_web::HttpRequest,
 ) -> Result<impl Responder, AppError> {
     // Extract tenant_id from request extensions (set by ApiKeyMiddleware)
-    let tenant_id = req.extensions()
+    let tenant_id = req
+        .extensions()
         .get::<TenantId>()
         .map(|id| id.0)
         .ok_or_else(|| AppError::NotFound("Tenant ID not found in request context".to_string()))?;
 
     // Validate SSO params if present
     validate_sso_params(&body.state, &body.nonce, &body.redirect_uri)?;
-    
+
     // Validate redirect_uri against allowed origins whitelist
     validate_redirect_uri_whitelist(&body.redirect_uri, &allowed_origins)?;
 
@@ -102,6 +107,7 @@ pub async fn login(
         state: body.state.clone(),
         nonce: body.nonce.clone(),
         redirect_uri: body.redirect_uri.clone(),
+        role: body.role.clone(),
     };
 
     let (auth_response, refresh_token) = usecase.login(login_req, &req).await?;
@@ -120,7 +126,7 @@ pub async fn login(
 
     if let Some(domain) = cookie_domain {
         if !domain.is_empty() {
-             cookie_builder = cookie_builder.domain(domain);
+            cookie_builder = cookie_builder.domain(domain);
         }
     }
 
@@ -132,7 +138,7 @@ pub async fn login(
             "Login successful",
             serde_json::json!({
                 "access_token": auth_response.access_token
-            })
+            }),
         )))
 }
 
@@ -161,7 +167,7 @@ pub async fn logout(
 
     if let Some(domain) = cookie_domain {
         if !domain.is_empty() {
-             cookie_builder = cookie_builder.domain(domain);
+            cookie_builder = cookie_builder.domain(domain);
         }
     }
 
@@ -169,9 +175,7 @@ pub async fn logout(
 
     Ok(HttpResponse::Ok()
         .cookie(cookie)
-        .json(SuccessResponseDTO::<()>::no_data(
-            "Logged out successfully",
-        )))
+        .json(SuccessResponseDTO::<()>::no_data("Logged out successfully")))
 }
 
 /// Logs out a user via redirect (SSO Logout).
@@ -188,7 +192,7 @@ pub async fn sso_logout(
 ) -> Result<impl Responder, AppError> {
     // Validate redirect_uri against allowed origins whitelist
     validate_redirect_uri_whitelist(&query.redirect_uri, &allowed_origins)?;
-    
+
     // Attempt logout logic (delete session) - ignore errors (e.g. if already logged out)
     let _ = usecase.sso_logout(&req).await;
 
@@ -200,16 +204,19 @@ pub async fn sso_logout(
         .secure(true)
         .same_site(SameSite::None)
         .max_age(actix_web::cookie::time::Duration::seconds(0));
-    
+
     if let Some(domain) = cookie_domain {
         if !domain.is_empty() {
-             cookie_builder = cookie_builder.domain(domain);
+            cookie_builder = cookie_builder.domain(domain);
         }
     }
 
     let cookie = cookie_builder.finish();
 
-    let redirect_url = query.redirect_uri.clone().unwrap_or_else(|| "/".to_string());
+    let redirect_url = query
+        .redirect_uri
+        .clone()
+        .unwrap_or_else(|| "/".to_string());
 
     Ok(HttpResponse::Found()
         .append_header(("Location", redirect_url))
@@ -240,7 +247,7 @@ pub async fn refresh(
 
     if let Some(domain) = cookie_domain {
         if !domain.is_empty() {
-             cookie_builder = cookie_builder.domain(domain);
+            cookie_builder = cookie_builder.domain(domain);
         }
     }
 
@@ -249,11 +256,11 @@ pub async fn refresh(
     Ok(HttpResponse::Ok()
         .cookie(cookie)
         .json(SuccessResponseDTO::new(
-        "Token refreshed successfully",
-        serde_json::json!({
-            "access_token": new_access_token
-        }),
-    )))
+            "Token refreshed successfully",
+            serde_json::json!({
+                "access_token": new_access_token
+            }),
+        )))
 }
 
 /// Verifies JWT token and returns user data if valid.
@@ -267,10 +274,7 @@ pub async fn verify(
     let user_id = AuthUseCase::extract_user_id_from_request(&req)?;
     let user_response = usecase.verify_user_exists(user_id).await?;
 
-    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
-        "Token is valid",
-        user_response,
-    )))
+    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new("Token is valid", user_response)))
 }
 
 /// Changes the authenticated user's password.

@@ -9,7 +9,7 @@ use uuid::Uuid;
 pub struct CreateTenantRequest {
     /// Tenant name (unique, required)
     pub name: String,
-    
+
     /// Tenant description (optional)
     pub description: Option<String>,
 }
@@ -21,7 +21,7 @@ pub struct CreateTenantRequest {
 pub struct UpdateTenantRequest {
     /// Updated tenant name
     pub name: Option<String>,
-    
+
     /// Updated tenant description
     pub description: Option<String>,
 }
@@ -34,6 +34,7 @@ pub struct TenantResponse {
     pub id: Uuid,
     pub name: String,
     pub description: Option<String>,
+    pub api_key: Option<String>,
     pub deleted_at: Option<DateTime<Utc>>,
     pub is_active: bool,
     pub created_at: DateTime<Utc>,
@@ -46,6 +47,7 @@ impl From<crate::domains::tenant::entities::tenant::Model> for TenantResponse {
             id: tenant.id,
             name: tenant.name,
             description: tenant.description,
+            api_key: tenant.api_key,
             is_active: tenant.deleted_at.is_none(),
             deleted_at: tenant.deleted_at,
             created_at: tenant.created_at,

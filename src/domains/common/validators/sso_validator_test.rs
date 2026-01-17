@@ -1,4 +1,3 @@
-
 use super::sso_validator::*;
 use crate::domains::common::errors::AppError;
 

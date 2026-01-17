@@ -60,7 +60,11 @@ where
         let svc = Rc::clone(&self.service);
         let method = req.method().clone();
         let path = req.path().to_string();
-        let peer_ip = req.connection_info().realip_remote_addr().unwrap_or("unknown").to_string();
+        let peer_ip = req
+            .connection_info()
+            .realip_remote_addr()
+            .unwrap_or("unknown")
+            .to_string();
         let start = Instant::now();
 
         Box::pin(async move {

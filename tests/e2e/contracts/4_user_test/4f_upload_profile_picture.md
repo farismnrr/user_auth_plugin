@@ -125,7 +125,7 @@ Upload a profile picture for the current user.
     ```json
     {
       "status": false,
-      "message": "Validation Error",
+      "message": "Malformed image data",
       "details": [{ "field": "file", "message": "Malformed image data" }]
     }
     ```

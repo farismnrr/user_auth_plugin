@@ -215,7 +215,7 @@ Authenticate user and receive access token.
   ```json
   {
     "status": false,
-    "message": "Validation Error"
+    "message": "State parameter must be alphanumeric"
   }
   ```
   *(Status: 422)*
@@ -237,7 +237,7 @@ Authenticate user and receive access token.
   ```json
   {
     "status": false,
-    "message": "Validation Error"
+    "message": "Nonce parameter too long (max 128 chars)"
   }
   ```
   *(Status: 422)*
@@ -267,3 +267,47 @@ Authenticate user and receive access token.
 - **Side Effects**:
   - Refresh token cookie set.
   - Session created.
+
+### 13. Validation: Redirect URI not in allowed origins
+- **URL**: `http://localhost:5500/auth/login`
+- **Method**: `POST`
+- **Pre-conditions**: None.
+- **Request Body**:
+  ```json
+  {
+    "email_or_username": "user",
+    "password": "password",
+    "redirect_uri": "https://evil-site.com/callback"
+  }
+  ```
+- **Expected Response**:
+  ```json
+  {
+    "status": false,
+    "message": "Redirect URI not in allowed origins"
+  }
+  ```
+  *(Status: 403)*
+- **Side Effects**: None.
+### 14. Login Role Mismatch
+- **URL**: `http://localhost:5500/auth/login`
+- **Method**: `POST`
+- **Pre-conditions**:
+  - User exists with role "user" (or any role distinct from requested role).
+- **Request Body**:
+  ```json
+  {
+    "email_or_username": "<user_email>",
+    "password": "<correct_password>",
+    "role": "admin"
+  }
+  ```
+- **Expected Response**:
+  ```json
+  {
+    "status": false,
+    "message": "User not found"
+  }
+  ```
+  *(Status: 404)*
+- **Side Effects**: None.

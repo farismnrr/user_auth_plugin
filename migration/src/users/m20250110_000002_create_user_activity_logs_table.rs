@@ -25,9 +25,7 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(
-                        ColumnDef::new(UserActivityLogs::UserId)
-                            .uuid()
-                            .null(), // Nullable to log failed registrations
+                        ColumnDef::new(UserActivityLogs::UserId).uuid().null(), // Nullable to log failed registrations
                     )
                     .col(
                         ColumnDef::new(UserActivityLogs::ActivityType)
@@ -41,11 +39,7 @@ impl MigrationTrait for Migration {
                             .string_len(20)
                             .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(UserActivityLogs::ErrorMessage)
-                            .text()
-                            .null(),
-                    )
+                    .col(ColumnDef::new(UserActivityLogs::ErrorMessage).text().null())
                     .col(
                         ColumnDef::new(UserActivityLogs::IpAddress)
                             .string()

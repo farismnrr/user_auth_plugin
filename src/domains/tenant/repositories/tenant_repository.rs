@@ -1,12 +1,12 @@
+use crate::domains::common::errors::AppError;
+use crate::domains::common::infrastructures::rocksdb_connection::RocksDbCache;
 use crate::domains::tenant::dtos::tenant_dto::{CreateTenantRequest, UpdateTenantRequest};
 use crate::domains::tenant::entities::tenant::{Entity as TenantEntity, Model as Tenant};
-use crate::domains::common::errors::AppError;
 use async_trait::async_trait;
 use sea_orm::*;
 use std::sync::Arc;
-use uuid::Uuid;
-use crate::domains::common::infrastructures::rocksdb_connection::RocksDbCache;
 use std::time::Duration;
+use uuid::Uuid;
 
 /// Trait defining tenant repository operations.
 ///
@@ -15,22 +15,22 @@ use std::time::Duration;
 pub trait TenantRepositoryTrait: Send + Sync {
     /// Creates a new tenant in the database.
     async fn create(&self, tenant: CreateTenantRequest) -> Result<Tenant, AppError>;
-    
+
     /// Finds a tenant by their ID.
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Tenant>, AppError>;
-    
+
     /// Finds a tenant by their name.
     async fn find_by_name(&self, name: &str) -> Result<Option<Tenant>, AppError>;
 
     /// Finds a tenant by their name including deleted ones.
     async fn find_by_name_with_deleted(&self, name: &str) -> Result<Option<Tenant>, AppError>;
-    
+
     /// Retrieves all non-deleted tenants from the database.
     async fn find_all(&self) -> Result<Vec<Tenant>, AppError>;
-    
+
     /// Updates an existing tenant.
     async fn update(&self, id: Uuid, tenant: UpdateTenantRequest) -> Result<Tenant, AppError>;
-    
+
     /// Soft deletes a tenant by setting deleted_at timestamp.
     async fn delete(&self, id: Uuid) -> Result<(), AppError>;
 
@@ -61,13 +61,13 @@ impl TenantRepository {
 impl TenantRepositoryTrait for TenantRepository {
     async fn create(&self, req: CreateTenantRequest) -> Result<Tenant, AppError> {
         let tenant = crate::domains::tenant::entities::tenant::ActiveModel {
-            id: Set(Uuid::new_v4()),  // Generate UUID in repository
+            id: Set(Uuid::new_v4()), // Generate UUID in repository
             name: Set(req.name.clone()),
             description: Set(req.description.clone()),
-            created_at: Set(chrono::Utc::now().into()),
-            updated_at: Set(chrono::Utc::now().into()),
+            api_key: Set(Some(uuid::Uuid::new_v4().to_string().replace("-", "") + &uuid::Uuid::new_v4().to_string().replace("-", ""))), // 64 chars
+            created_at: Set(chrono::Utc::now()),
+            updated_at: Set(chrono::Utc::now()),
             deleted_at: Set(None),
-            ..Default::default()
         };
 
         let result = TenantEntity::insert(tenant.clone()).exec(&*self.db).await;
@@ -92,7 +92,7 @@ impl TenantRepositoryTrait for TenantRepository {
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Tenant>, AppError> {
         let cache_key = format!("tenant:{}", id);
         if let Some(cached_tenant) = self.cache.get::<Tenant>(&cache_key) {
-             return Ok(Some(cached_tenant));
+            return Ok(Some(cached_tenant));
         }
 
         let tenant = TenantEntity::find_by_id(id)
@@ -115,7 +115,7 @@ impl TenantRepositoryTrait for TenantRepository {
     async fn find_by_name(&self, name: &str) -> Result<Option<Tenant>, AppError> {
         let cache_key = format!("tenant:name:{}", name);
         if let Some(cached_tenant) = self.cache.get::<Tenant>(&cache_key) {
-             return Ok(Some(cached_tenant));
+            return Ok(Some(cached_tenant));
         }
 
         let tenant = TenantEntity::find()
@@ -163,7 +163,8 @@ impl TenantRepositoryTrait for TenantRepository {
             return Err(AppError::NotFound("Tenant not found".to_string()));
         }
 
-        let mut tenant: crate::domains::tenant::entities::tenant::ActiveModel = existing.clone().unwrap().into();
+        let mut tenant: crate::domains::tenant::entities::tenant::ActiveModel =
+            existing.clone().unwrap().into();
 
         if let Some(ref name) = req.name {
             tenant.name = Set(name.clone());
@@ -194,7 +195,7 @@ impl TenantRepositoryTrait for TenantRepository {
 
         // Invalidate cache
         self.cache.del(&format!("tenant:{}", id));
-        
+
         // Invalidate name cache. Use the fetched existing tenant to get the old name.
         if let Some(old_tenant) = existing {
             self.cache.del(&format!("tenant:name:{}", old_tenant.name));
@@ -210,7 +211,8 @@ impl TenantRepositoryTrait for TenantRepository {
             return Err(AppError::NotFound("Tenant not found".to_string()));
         }
 
-        let mut tenant: crate::domains::tenant::entities::tenant::ActiveModel = existing.clone().unwrap().into();
+        let mut tenant: crate::domains::tenant::entities::tenant::ActiveModel =
+            existing.clone().unwrap().into();
         tenant.deleted_at = Set(Some(chrono::Utc::now()));
 
         tenant
@@ -222,27 +224,31 @@ impl TenantRepositoryTrait for TenantRepository {
         self.cache.del(&format!("tenant:{}", id));
         // We need to fetch it to invalidate name cache, but delete returns () and we only have id here.
         // Ideally we should have fetched it before deleting or just ignore the name cache if it's acceptable for it to expire naturally.
-        // But wait, line 161 fetches `existing`. 
+        // But wait, line 161 fetches `existing`.
         // `existing` is Option<Tenant>.
         if let Some(t) = existing {
-             self.cache.del(&format!("tenant:name:{}", t.name));
+            self.cache.del(&format!("tenant:name:{}", t.name));
         }
-        
+
         Ok(())
     }
 
     async fn restore(&self, id: Uuid) -> Result<(), AppError> {
         let existing = TenantEntity::find_by_id(id)
-             .one(&*self.db)
-             .await
-             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
+            .one(&*self.db)
+            .await
+            .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         if existing.is_none() {
-            return Err(AppError::NotFound(format!("Tenant with id {} not found", id)));
+            return Err(AppError::NotFound(format!(
+                "Tenant with id {} not found",
+                id
+            )));
         }
-        
+
         // We use ActiveModel to update
-        let mut tenant: crate::domains::tenant::entities::tenant::ActiveModel = existing.unwrap().into();
+        let mut tenant: crate::domains::tenant::entities::tenant::ActiveModel =
+            existing.unwrap().into();
         tenant.deleted_at = Set(None);
 
         tenant

@@ -13,3 +13,4 @@ snapshot.json
 *.sqlite
 *.sql
 *.db
+*.log

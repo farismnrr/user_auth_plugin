@@ -1,4 +1,6 @@
-use crate::domains::auth::controllers::auth_controller::{change_password, login, logout, refresh, register, verify, generate_invitation_code};
+use crate::domains::auth::controllers::auth_controller::{
+    change_password, generate_invitation_code, login, logout, refresh, register, verify,
+};
 use crate::domains::auth::middlewares::auth_middleware;
 use crate::domains::tenant::middlewares::api_key_middleware::ApiKeyMiddleware;
 use actix_web::web;
@@ -17,13 +19,11 @@ use actix_web_httpauth::middleware::HttpAuthentication;
 /// - `POST /logout`
 /// - `POST /verify`
 /// - `PUT /change-password`
-pub fn configure_routes(
-    cfg: &mut web::ServiceConfig,
-) {
+pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     let jwt_auth = HttpAuthentication::bearer(auth_middleware::validator);
-    
+
     // AuthUseCase is now registered globally in server.rs
-    
+
     cfg.service(
         web::scope("/auth")
             // SSO Logout (Cookie based, no Bearer auth required)
@@ -60,7 +60,7 @@ pub fn configure_routes(
                     // Routes requiring only JWT
                     .route("/verify", web::get().to(verify))
                     .route("/logout", web::delete().to(logout))
-                    
+
                     // Nested scope for JWT + ApiKey protected routes
                     .service(
                         web::scope("")

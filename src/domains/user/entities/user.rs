@@ -30,7 +30,6 @@ pub enum Relation {
     UserSessions,
     #[sea_orm(has_many = "super::user_activity_log::Entity")]
     UserActivityLogs,
-
 }
 
 impl Related<super::user_details::Entity> for Entity {
@@ -40,7 +39,7 @@ impl Related<super::user_details::Entity> for Entity {
 }
 
 // Many-to-many relation with Tenant through UserTenant
-    // Relations to Tenant and UserTenant removed due to domain separation.
-    // Use UserTenant::find().filter(UserTenant::Column::UserId.eq(user.id)) instead.
+// Relations to Tenant and UserTenant removed due to domain separation.
+// Use UserTenant::find().filter(UserTenant::Column::UserId.eq(user.id)) instead.
 
 impl ActiveModelBehavior for ActiveModel {}

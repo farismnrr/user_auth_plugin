@@ -1,7 +1,7 @@
+use crate::domains::common::utils::jwt::JwtService;
 use actix_web::{dev::ServiceRequest, Error, HttpMessage};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use uuid::Uuid;
-use crate::domains::common::utils::jwt::JwtService;
 
 /// Extracts and validates JWT token, then injects user_id into request extensions.
 ///
@@ -23,24 +23,26 @@ pub async fn validator(
 ) -> Result<ServiceRequest, (Error, ServiceRequest)> {
     let token = credentials.token();
     let jwt_service = JwtService::new();
-    
+
     match jwt_service.validate_token(token) {
         Ok(claims) => {
             // Check if tenant_id matches the one in request extensions (from ApiKeyMiddleware)
-            let tenant_id_str = req.extensions()
+            let tenant_id_str = req
+                .extensions()
                 .get::<crate::domains::tenant::middlewares::api_key_middleware::TenantId>()
                 .map(|t| t.0.to_string());
-            
+
             if let Some(tid_str) = tenant_id_str {
-               if claims.tenant_id != tid_str {
-                   let err = actix_web::error::InternalError::from_response(
-                        "Unauthorized", 
+                if claims.tenant_id != tid_str {
+                    let err = actix_web::error::InternalError::from_response(
+                        "Unauthorized",
                         actix_web::HttpResponse::Forbidden()
                             .content_type("application/json")
-                            .body(r#"{"status":false,"message":"Unauthorized"}"#)
-                    ).into();
+                            .body(r#"{"status":false,"message":"Unauthorized"}"#),
+                    )
+                    .into();
                     return Err((err, req));
-               }
+                }
             }
 
             // Parse user_id from claims
@@ -63,18 +65,19 @@ pub async fn validator(
         }
         Err(e) => {
             let mut message = "Unauthorized";
-            if e.to_string().contains("ExpiredSignature") {
+            use jsonwebtoken::errors::ErrorKind;
+            if matches!(e.kind(), ErrorKind::ExpiredSignature) {
                 message = "Token expired";
             }
 
             let err = actix_web::error::InternalError::from_response(
-                message, 
+                message,
                 actix_web::HttpResponse::Unauthorized()
                     .content_type("application/json")
-                    .body(format!(r#"{{"status":false,"message":"{}"}}"#, message))
-            ).into();
+                    .body(format!(r#"{{"status":false,"message":"{}"}}"#, message)),
+            )
+            .into();
             Err((err, req))
         }
     }
 }
-

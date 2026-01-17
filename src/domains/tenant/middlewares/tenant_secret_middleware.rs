@@ -3,15 +3,15 @@
 //! This middleware validates tenant secret keys from the X-Tenant-Secret-Key header
 //! for tenant creation and bootstrapping operations.
 
+use crate::domains::common::dtos::response_dto::ErrorResponseDTO;
 use actix_web::{
     body::EitherBody,
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
     http::header,
     Error, HttpResponse,
 };
-use futures_util::future::{ok, Ready, LocalBoxFuture};
+use futures_util::future::{ok, LocalBoxFuture, Ready};
 use log::debug;
-use crate::domains::common::dtos::response_dto::ErrorResponseDTO;
 
 /// Tenant secret key authentication middleware.
 ///
@@ -34,7 +34,10 @@ where
     fn new_transform(&self, service: S) -> Self::Future {
         use crate::domains::common::utils::config::Config;
         let tenant_secret_key = Config::get().tenant_secret_key.clone();
-        ok(TenantSecretMiddlewareService { service, tenant_secret_key })  
+        ok(TenantSecretMiddlewareService {
+            service,
+            tenant_secret_key,
+        })
     }
 }
 
@@ -54,29 +57,30 @@ where
     type Error = Error;
     type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
 
-    fn poll_ready(&self, ctx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+    fn poll_ready(
+        &self,
+        ctx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
         self.service.poll_ready(ctx)
     }
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
         let expected_key = self.tenant_secret_key.clone();
         let path = req.path().to_string();
-        let has_secret_key_header = req.headers().get("X-Tenant-Secret-Key").is_some();
         let secret_key_value = req
             .headers()
             .get("X-Tenant-Secret-Key")
             .and_then(|v| v.to_str().ok())
             .map(str::trim)
             .unwrap_or("");
-        
-        debug!(
-            "[Middleware | TenantSecret] call - path='{}' x_tenant_secret_key_present={} key_len={} expected_key_set={}",
-            path, has_secret_key_header, secret_key_value.len(), !expected_key.is_empty()
-        );
+
 
         // Check if TENANT_SECRET_KEY is configured
         if expected_key.is_empty() {
-            debug!("[Middleware | TenantSecret] TENANT_SECRET_KEY not configured for '{}'", path);
+            debug!(
+                "[Middleware | TenantSecret] TENANT_SECRET_KEY not configured for '{}'",
+                path
+            );
             let res = HttpResponse::InternalServerError()
                 .insert_header((header::CONTENT_TYPE, "application/json"))
                 .json(ErrorResponseDTO {
@@ -91,7 +95,10 @@ where
         // Validate the secret key
         let is_valid = secret_key_value == expected_key;
         if !is_valid {
-            debug!("[Middleware | TenantSecret] Invalid tenant secret key for '{}'", path);
+            debug!(
+                "[Middleware | TenantSecret] Invalid tenant secret key for '{}'",
+                path
+            );
             let response = ErrorResponseDTO::<()> {
                 status: false,
                 message: "Unauthorized",
@@ -104,7 +111,10 @@ where
             return Box::pin(async move { Ok(req.into_response(res.map_into_right_body())) });
         }
 
-        debug!("[Middleware | TenantSecret] Authorized request to '{}'", path);
+        debug!(
+            "[Middleware | TenantSecret] Authorized request to '{}'",
+            path
+        );
         let fut = self.service.call(req);
         Box::pin(async move {
             let res = fut.await?;

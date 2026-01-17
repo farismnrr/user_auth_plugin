@@ -234,8 +234,8 @@ define create_db_if_not_exists
 	if [ "$$CORE_DB_TYPE" = "sqlite" ]; then \
 		echo "📦 Using SQLite database (file-based)"; \
 	else \
-		docker exec postgres-sql psql -U 5c964c2b206140738bf8e92325746465 -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '$$CORE_DB_NAME'" | grep -q 1 || \
-		docker exec postgres-sql psql -U 5c964c2b206140738bf8e92325746465 -d postgres -c "CREATE DATABASE $$CORE_DB_NAME OWNER $$CORE_DB_USER"; \
+		docker exec postgres-sql psql -U postgres -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '$$CORE_DB_NAME'" | grep -q 1 || \
+		docker exec postgres-sql psql -U postgres -d postgres -c "CREATE DATABASE $$CORE_DB_NAME OWNER $$CORE_DB_USER"; \
 	fi
 endef
 
@@ -294,7 +294,7 @@ create-tenant:
 		exit 1; \
 	fi; \
 	echo "🚀 Creating tenant '$$name'..."; \
-	curl -s -X POST $$ENDPOINT/tenants \
+	curl -s -X POST $$ENDPOINT/api/tenants \
 		-H "Content-Type: application/json" \
 		-H "X-Tenant-Secret-Key: $$TENANT_SECRET_KEY" \
 		-d "{\"name\": \"$$name\", \"description\": \"$$description\"}" | jq .

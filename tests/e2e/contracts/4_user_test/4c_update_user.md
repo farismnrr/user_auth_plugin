@@ -32,7 +32,7 @@ Update current user's core profile information.
   ```json
   {
     "status": false,
-    "message": "Validation Error",
+    "message": "Username too short",
     "details": [
       {
         "field": "username",
@@ -88,12 +88,12 @@ Update current user's core profile information.
   { "username": "<script>alert(1)</script>" }
   ```
 - **Expected Response**:
-  - Status 422 (Validation Error) OR 200 with sanitized output.
+  - Status 422 (Validation Failed) OR 200 with sanitized output.
   - If 422:
     ```json
     {
       "status": false,
-      "message": "Validation Error",
+      "message": "Invalid characters",
       "details": [{ "field": "username", "message": "Invalid characters" }]
     }
     ```

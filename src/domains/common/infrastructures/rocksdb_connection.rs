@@ -1,8 +1,8 @@
-use rocksdb::{DB, Options};
-use serde::{de::DeserializeOwned, Serialize, Deserialize};
+use log::{error, info, warn};
+use rocksdb::{Options, DB};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use log::{error, warn, info};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct CachedItem<T> {
@@ -19,13 +19,11 @@ impl RocksDbCache {
         let mut opts = Options::default();
         opts.create_if_missing(true);
         let db = DB::open(&opts, path)?;
-        Ok(Self {
-            db: Arc::new(db),
-        })
+        Ok(Self { db: Arc::new(db) })
     }
 
     /// Creates a new RocksDbCache with automatic recovery from lock errors.
-    /// If the database fails to open (e.g., due to a stale lock file), 
+    /// If the database fails to open (e.g., due to a stale lock file),
     /// it will delete the cache directory and recreate it from scratch.
     pub fn new_with_recovery(path: &str) -> Result<Self, rocksdb::Error> {
         match Self::new(path) {
@@ -33,10 +31,12 @@ impl RocksDbCache {
             Err(e) => {
                 let error_msg = e.to_string();
                 // Check if it's a lock file error
-                if error_msg.contains("lock file") || error_msg.contains("Resource temporarily unavailable") {
+                if error_msg.contains("lock file")
+                    || error_msg.contains("Resource temporarily unavailable")
+                {
                     warn!("⚠️ RocksDB lock error detected: {}", error_msg);
                     info!("🔄 Attempting to recover by deleting and recreating cache directory...");
-                    
+
                     // Delete the cache directory
                     if let Err(delete_err) = std::fs::remove_dir_all(path) {
                         // If path doesn't exist, that's fine
@@ -45,9 +45,9 @@ impl RocksDbCache {
                             return Err(e);
                         }
                     }
-                    
+
                     info!("🗑️ Cache directory deleted successfully");
-                    
+
                     // Try to create the cache again
                     match Self::new(path) {
                         Ok(cache) => {
@@ -55,7 +55,10 @@ impl RocksDbCache {
                             Ok(cache)
                         }
                         Err(retry_err) => {
-                            error!("❌ Failed to recreate RocksDB cache after recovery: {}", retry_err);
+                            error!(
+                                "❌ Failed to recreate RocksDB cache after recovery: {}",
+                                retry_err
+                            );
                             Err(retry_err)
                         }
                     }
@@ -72,7 +75,10 @@ impl RocksDbCache {
             Ok(Some(value)) => {
                 match serde_json::from_slice::<CachedItem<T>>(&value) {
                     Ok(item) => {
-                        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+                        let now = SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs();
                         if item.expired_at > now {
                             // info!("CACHE HIT: {}", key);
                             return Some(item.data);
@@ -100,7 +106,10 @@ impl RocksDbCache {
     }
 
     pub fn set<T: Serialize>(&self, key: &str, value: T, ttl: Duration) {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         let expired_at = now + ttl.as_secs();
         let item = CachedItem {
             data: value,
@@ -120,7 +129,7 @@ impl RocksDbCache {
     }
 
     pub fn del(&self, key: &str) {
-         let _ = self.db.delete(key);
+        let _ = self.db.delete(key);
     }
 
     /// Monitors the health of the RocksDB connection (basically checks if it's open)
@@ -131,14 +140,14 @@ impl RocksDbCache {
 
             loop {
                 interval.tick().await;
-                // Simple health check: try to read a non-existent key. 
+                // Simple health check: try to read a non-existent key.
                 // If it panics or errors catastrophically, we might want to shut down.
                 // RocksDB usually doesn't disconnect like a network DB, so this is ensuring the handle is valid.
                 if let Err(e) = self.db.get("HEALTH_CHECK_PROBE") {
-                     error!("❌ RocksDB health check failed: {}", e);
-                     error!("🛑 Triggering server shutdown due to RocksDB failure");
-                     let _ = shutdown_tx.send(true);
-                     break;
+                    error!("❌ RocksDB health check failed: {}", e);
+                    error!("🛑 Triggering server shutdown due to RocksDB failure");
+                    let _ = shutdown_tx.send(true);
+                    break;
                 }
             }
         });
@@ -147,12 +156,12 @@ impl RocksDbCache {
     /// Gracefully shuts down the RocksDB connection (flushes and drops)
     pub async fn shutdown(self: Arc<Self>, mut shutdown_rx: tokio::sync::watch::Receiver<bool>) {
         let _ = shutdown_rx.changed().await;
-        
+
         // In Rust rocksdb, dropping the DB handle automatically closes it.
         // We ensure we hold the last reference or just let it drop naturally when the Arc count goes to 0.
-        // Since we are moving the Arc into this async block and it's likely the main main holds one, 
+        // Since we are moving the Arc into this async block and it's likely the main main holds one,
         // we might just log here.
-        
+
         log::info!("🪨 RocksDB connection flushing and closing...");
         // Arc::try_unwrap would fail if others hold it, but when the server stops, other holders (repos) are dropped.
         // Explicit flush or cancel compaction could go here if needed.

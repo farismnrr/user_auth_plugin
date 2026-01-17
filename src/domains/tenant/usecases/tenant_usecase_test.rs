@@ -1,17 +1,16 @@
-
 #[cfg(test)]
 mod tests {
-    use crate::domains::tenant::usecases::tenant_usecase::TenantUseCase;
-    use crate::domains::tenant::repositories::tenant_repository::TenantRepositoryTrait;
-    use crate::domains::tenant::entities::tenant::Model as Tenant;
-    use crate::domains::tenant::dtos::tenant_dto::CreateTenantRequest;
     use crate::domains::common::errors::AppError;
+    use crate::domains::tenant::dtos::tenant_dto::CreateTenantRequest;
+    use crate::domains::tenant::entities::tenant::Model as Tenant;
+    use crate::domains::tenant::repositories::tenant_repository::TenantRepositoryTrait;
+    use crate::domains::tenant::usecases::tenant_usecase::TenantUseCase;
     use async_trait::async_trait;
-    use std::sync::Arc;
+    use chrono::Utc;
     use mockall::mock;
     use mockall::predicate::*;
+    use std::sync::Arc;
     use uuid::Uuid;
-    use chrono::Utc;
 
     // Mocking TenantRepositoryTrait
     mock! {
@@ -41,6 +40,7 @@ mod tests {
             id: tenant_id,
             name: name.to_string(),
             description: Some(description.to_string()),
+            api_key: Some("test-api-key".to_string()),
             created_at: Utc::now().into(),
             updated_at: Utc::now().into(),
             deleted_at: None,
@@ -71,6 +71,7 @@ mod tests {
         assert!(result.is_ok());
         let (response, created) = result.unwrap();
         assert_eq!(response.id, tenant_id);
+        assert!(response.api_key.is_some());
         assert!(created);
     }
 
@@ -85,6 +86,7 @@ mod tests {
             id: tenant_id,
             name: name.to_string(),
             description: None,
+            api_key: Some("existing-api-key".to_string()),
             created_at: Utc::now().into(),
             updated_at: Utc::now().into(),
             deleted_at: None,

@@ -10,6 +10,7 @@ pub struct LoginRequestJson {
     pub state: Option<String>,
     pub nonce: Option<String>,
     pub redirect_uri: Option<String>,
+    pub role: Option<String>,
 }
 
 /// Request DTO for user login (Internal).
@@ -24,6 +25,7 @@ pub struct LoginRequest {
     pub state: Option<String>,
     pub nonce: Option<String>,
     pub redirect_uri: Option<String>,
+    pub role: Option<String>,
 }
 
 /// Request DTO for user registration (JSON Body).

@@ -1,27 +1,28 @@
-use std::sync::Arc;
-use chrono::Utc;
+use crate::domains::auth::repositories::invitation_code_repository::InvitationCodeRepositoryTrait;
+use crate::domains::common::errors::{AppError, ValidationDetail};
 use crate::domains::common::utils::jwt::JwtService;
 use crate::domains::common::utils::{password, request_helper};
-use crate::domains::user::validators::user_validator;
+use crate::domains::tenant::repositories::user_tenant_repository::UserTenantRepositoryTrait;
 use crate::domains::user::dtos::auth_dto::{AuthResponse, LoginRequest, RegisterRequest};
 use crate::domains::user::dtos::change_password_dto::ChangePasswordRequest;
-use crate::domains::user::dtos::user_dto::{CreateUserRequest, UserResponse};
 use crate::domains::user::dtos::user_details_dto::UserDetailsResponse;
+use crate::domains::user::dtos::user_dto::{CreateUserRequest, UserResponse};
 use crate::domains::user::entities::user::Model as User;
 use crate::domains::user::entities::user_details::Model as UserDetails;
 use crate::domains::user::entities::user_session::Model as UserSession;
-use crate::domains::common::errors::{AppError, ValidationDetail};
 use crate::domains::user::repositories::user_activity_log_repository::UserActivityLogRepositoryTrait;
 use crate::domains::user::repositories::user_repository::UserRepositoryTrait;
 use crate::domains::user::repositories::user_session_repository::UserSessionRepositoryTrait;
-use crate::domains::tenant::repositories::user_tenant_repository::UserTenantRepositoryTrait;
+use crate::domains::user::validators::user_validator;
 use actix_web::HttpMessage;
-use crate::domains::auth::repositories::invitation_code_repository::InvitationCodeRepositoryTrait;
+use chrono::Utc;
+use std::sync::Arc;
 
 pub struct AuthUseCase {
     repository: Arc<dyn UserRepositoryTrait>,
-    user_details_repository:
-        Arc<dyn crate::domains::user::repositories::user_details_repository::UserDetailsRepositoryTrait>,
+    user_details_repository: Arc<
+        dyn crate::domains::user::repositories::user_details_repository::UserDetailsRepositoryTrait,
+    >,
     user_tenant_repository: Arc<dyn UserTenantRepositoryTrait>,
     session_repository: Arc<dyn UserSessionRepositoryTrait>,
     activity_log_repository: Arc<dyn UserActivityLogRepositoryTrait>,
@@ -51,7 +52,6 @@ impl AuthUseCase {
             jwt_service: JwtService::new(),
         }
     }
-
 
     /// Registers a new user and generates authentication tokens.
     ///
@@ -92,64 +92,103 @@ impl AuthUseCase {
                 .await;
             return Err(e);
         }
-        
+
         // Validate role
         let valid_roles = ["user", "admin"];
         if !valid_roles.contains(&req.role.as_str()) {
             let err = AppError::BadRequest("Bad Request".to_string());
-            self.log_activity_failure(None, "register", &err, ip_address.clone(), user_agent.clone())
-                .await;
+            self.log_activity_failure(
+                None,
+                "register",
+                &err,
+                ip_address.clone(),
+                user_agent.clone(),
+            )
+            .await;
             return Err(err);
         }
 
         // Validate Invitation Code for non "user" roles
         if req.role != "user" {
             let code_valid = if let Some(code) = &req.invitation_code {
-                self.invitation_code_repository.validate_and_delete_code(code).await?
+                self.invitation_code_repository
+                    .validate_and_delete_code(code)
+                    .await?
             } else {
                 false
             };
 
             if !code_valid {
                 let err = AppError::Forbidden("Invalid or missing invitation code".to_string());
-                self.log_activity_failure(None, "register", &err, ip_address.clone(), user_agent.clone())
-                    .await;
+                self.log_activity_failure(
+                    None,
+                    "register",
+                    &err,
+                    ip_address.clone(),
+                    user_agent.clone(),
+                )
+                .await;
                 return Err(err);
             }
         }
 
         // Step 1: Check if user exists (Global Check)
         let normalized_email = req.email.to_lowercase();
-        
-        let (user, is_restored) = if let Some(existing_user) = self.repository.find_by_email_with_deleted(&normalized_email).await? {
-            self.validate_and_link_existing_user(existing_user, &req, &normalized_email, ip_address.clone(), user_agent.clone()).await?
-        } else if let Some(existing_user) = self.repository.find_by_username(&req.username).await? {
-            self.validate_and_link_existing_user(existing_user, &req, &normalized_email, ip_address.clone(), user_agent.clone()).await?
+
+        let mut conflict_reason = "Email already exists";
+        let existing_user_option = if let Some(u) = self.repository.find_by_email_with_deleted(&normalized_email).await? {
+            Some(u)
+        } else if let Some(u) = self.repository.find_by_username(&req.username).await? {
+            conflict_reason = "Username already exists";
+            Some(u)
         } else {
-             self.create_new_user(&req, &normalized_email).await?
+            None
         };
 
-        // Step 2: Check if user is already assigned to this tenant
-        match self.user_tenant_repository
-            .get_user_role_in_tenant(user.id, req.tenant_id)
-            .await?
-        {
-            Some(_existing_role) => {
-                if !is_restored {
-                    // User already in tenant and not restored -> Conflict
-                    let err = AppError::Conflict("Email already exists".to_string());
-                    self.log_activity_failure(Some(user.id), "register", &err, ip_address, user_agent)
-                        .await;
-                    return Err(err);
-                }
-                // If restored, allow reusing existing link
+        // EARLY RETURN: New User Creation
+        let Some(existing_user) = existing_user_option else {
+             let (user, _) = self.create_new_user(&req, &normalized_email).await?;
+             
+             // Link to tenant
+             self.user_tenant_repository.add_user_to_tenant(user.id, req.tenant_id, req.role.clone()).await?;
+             
+             // Generate tokens
+             let role = req.role.clone();
+             let access_token = self.jwt_service.generate_access_token(user.id, req.tenant_id, role.clone())
+                 .map_err(|e| AppError::InternalError(format!("Failed to generate access token: {}", e)))?;
+             
+             let _refresh_token = self.jwt_service.generate_refresh_token(user.id, req.tenant_id, role)
+                 .map_err(|e| AppError::InternalError(format!("Failed to generate refresh token: {}", e)))?;
+                 
+             self.log_activity_success(Some(user.id), "register", ip_address, user_agent).await;
+             
+             return Ok(AuthResponse { user_id: user.id, access_token });
+        };
+
+        // Step 2: Existing User Validation
+        let (user, is_restored) = self.validate_existing_user_for_registration(
+            existing_user,
+            &req,
+            &normalized_email,
+            conflict_reason,
+            ip_address.clone(),
+            user_agent.clone()
+        ).await?;
+
+        // Step 3: Check if user is already assigned to this tenant
+        if let Some(_existing_role) = self.user_tenant_repository.get_user_role_in_tenant(user.id, req.tenant_id).await? {
+            if !is_restored {
+                // User already in tenant and not restored -> Conflict
+                let err = AppError::Conflict(conflict_reason.to_string());
+                self.log_activity_failure(Some(user.id), "register", &err, ip_address, user_agent).await;
+                return Err(err);
             }
-            None => {
-                // Assign user to tenant with role
-                self.user_tenant_repository
-                    .add_user_to_tenant(user.id, req.tenant_id, req.role.clone())
-                    .await?;
-            }
+            // If restored, allow reuse
+        } else {
+            // Assign user to tenant with role
+            self.user_tenant_repository
+                .add_user_to_tenant(user.id, req.tenant_id, req.role.clone())
+                .await?;
         }
 
         // Generate tokens with tenant context
@@ -209,11 +248,15 @@ impl AuthUseCase {
 
         // Hack for e2e test expecting banned user (since not seeded)
         if req.email_or_username == "banned_user" {
-             return Err(AppError::Forbidden("Forbidden".to_string()));
+            return Err(AppError::Forbidden("Forbidden".to_string()));
         }
 
         // Try to find user by email first
-        let user = match self.repository.find_by_email_with_deleted(&login_identifier).await? {
+        let user = match self
+            .repository
+            .find_by_email_with_deleted(&login_identifier)
+            .await?
+        {
             Some(u) => {
                 if u.deleted_at.is_some() {
                     // 4g test expects 401 or 404 for deleted user login
@@ -221,21 +264,24 @@ impl AuthUseCase {
                     return Err(AppError::Unauthorized("Unauthorized".to_string()));
                 }
                 u
-            },
+            }
             None => {
                 // If not found by email, try username
-                match self.repository
+                match self
+                    .repository
                     .find_by_username_with_deleted(&req.email_or_username) // Use original for username
-                    .await? 
+                    .await?
                 {
                     Some(u) => {
-                         if u.deleted_at.is_some() {
+                        if u.deleted_at.is_some() {
                             return Err(AppError::Unauthorized("Unauthorized".to_string()));
                         }
                         u
-                    },
+                    }
                     None => {
-                        return Err(AppError::Unauthorized("username or email or password invalid".to_string()));
+                        return Err(AppError::Unauthorized(
+                            "username or email or password invalid".to_string(),
+                        ));
                     }
                 }
             }
@@ -244,25 +290,30 @@ impl AuthUseCase {
         // Verify password
         if !password::verify_password(&req.password, &user.password_hash)? {
             let err = AppError::Unauthorized("username or email or password invalid".to_string());
-            self.log_activity_failure(
-                Some(user.id),
-                "login",
-                &err,
-                ip_address,
-                user_agent,
-            )
-            .await;
+            self.log_activity_failure(Some(user.id), "login", &err, ip_address, user_agent)
+                .await;
             return Err(err);
         }
 
         // Validate tenant membership and get role
-        let role = self.user_tenant_repository
+        let role = self
+            .user_tenant_repository
             .get_user_role_in_tenant(user.id, req.tenant_id)
             .await?
             .ok_or_else(|| {
-                let err = AppError::Unauthorized("User not authorized for this tenant".to_string());
-                err
+                AppError::Unauthorized("User not authorized for this tenant".to_string())
             })?;
+
+        // Role Validation (requested vs actual)
+        if let Some(requested_role) = &req.role {
+            if role != *requested_role {
+                // User explicitly requested "NotFound" behavior to mimic non-existence in that role scope
+                let err = AppError::NotFound("User not found".to_string());
+                self.log_activity_failure(Some(user.id), "login_role_mismatch", &err, ip_address, user_agent)
+                    .await;
+                return Err(err);
+            }
+        }
 
         // Generate tokens with tenant context
         let access_token = self
@@ -281,8 +332,8 @@ impl AuthUseCase {
 
         // Create session record
         let refresh_token_hash = request_helper::hash_token(&refresh_token);
-        let expires_at = Utc::now()
-            + chrono::Duration::seconds(self.jwt_service.get_refresh_token_expiry());
+        let expires_at =
+            Utc::now() + chrono::Duration::seconds(self.jwt_service.get_refresh_token_expiry());
 
         self.session_repository
             .create_session(
@@ -364,10 +415,7 @@ impl AuthUseCase {
     /// # Errors
     ///
     /// Returns `AppError::Unauthorized` if refresh token is missing or invalid.
-    pub async fn sso_logout(
-        &self,
-        http_req: &actix_web::HttpRequest,
-    ) -> Result<(), AppError> {
+    pub async fn sso_logout(&self, http_req: &actix_web::HttpRequest) -> Result<(), AppError> {
         let (ip_address, user_agent) = request_helper::extract_client_info(http_req);
 
         // Extract refresh token from cookie
@@ -388,15 +436,15 @@ impl AuthUseCase {
         {
             // Delete the session
             self.session_repository.delete_session(session.id).await?;
-            
+
             // Log successful logout using user_id from session
             self.log_activity_success(Some(session.user_id), "sso_logout", ip_address, user_agent)
                 .await;
         } else {
-             // Session not found (already logged out or invalid)
-             // We still consider this specific operation a "success" (idempotent) 
-             // but maybe log a warning or just return Ok.
-             // For strictness, if cookie exists but session doesn't, it's stale.
+            // Session not found (already logged out or invalid)
+            // We still consider this specific operation a "success" (idempotent)
+            // but maybe log a warning or just return Ok.
+            // For strictness, if cookie exists but session doesn't, it's stale.
         }
 
         Ok(())
@@ -451,21 +499,19 @@ impl AuthUseCase {
     /// - `AppError::InternalError` if new token generation fails
     pub async fn refresh_token(&self, refresh_token: &str) -> Result<(String, String), AppError> {
         // Validate the refresh token
-        let claims = self
-            .jwt_service
-            .validate_token(refresh_token)
-            .map_err(|e: jsonwebtoken::errors::Error| {
-                if e.to_string().contains("ExpiredSignature") {
+        let claims = self.jwt_service.validate_token(refresh_token).map_err(
+            |e: jsonwebtoken::errors::Error| {
+                use jsonwebtoken::errors::ErrorKind;
+                if matches!(e.kind(), ErrorKind::ExpiredSignature) {
                     return AppError::Unauthorized("Token expired".to_string());
                 }
                 AppError::Unauthorized("Unauthorized".to_string())
-            })?;
+            },
+        )?;
 
         // Verify it's a refresh token (not an access token)
         if claims.token_type != "refresh" {
-            return Err(AppError::Unauthorized(
-                "Unauthorized".to_string(),
-            ));
+            return Err(AppError::Unauthorized("Unauthorized".to_string()));
         }
 
         // Extract user_id from claims
@@ -480,24 +526,21 @@ impl AuthUseCase {
         // Verify session exists
         let refresh_token_hash = request_helper::hash_token(refresh_token);
         log::debug!("Validating session for hash: [REDACTED]");
-        let session: UserSession = self.session_repository
+        let session: UserSession = self
+            .session_repository
             .find_by_refresh_token_hash(&refresh_token_hash)
             .await?
             .ok_or_else(|| {
-                log::warn!("Session not found for hash: {}", refresh_token_hash);
+                log::warn!("Session not found for hash: [REDACTED]");
                 AppError::Unauthorized("Unauthorized".to_string())
             })?;
 
         // Verify user still exists in database
         log::debug!("Verifying user exists: {}", user_id);
-        let _user: User = self
-            .repository
-            .find_by_id(user_id)
-            .await?
-            .ok_or_else(|| {
-                log::warn!("User not found: {}", user_id);
-                AppError::Unauthorized("Unauthorized".to_string())
-            })?;
+        let _user: User = self.repository.find_by_id(user_id).await?.ok_or_else(|| {
+            log::warn!("User not found: {}", user_id);
+            AppError::Unauthorized("Unauthorized".to_string())
+        })?;
 
         // ROTATION: Delete the old session
         log::debug!("Deleting old session: {}", session.id);
@@ -529,8 +572,8 @@ impl AuthUseCase {
         // Create new session
         log::debug!("Creating new session");
         let new_refresh_token_hash = request_helper::hash_token(&new_refresh_token);
-        let expires_at = Utc::now()
-            + chrono::Duration::seconds(self.jwt_service.get_refresh_token_expiry());
+        let expires_at =
+            Utc::now() + chrono::Duration::seconds(self.jwt_service.get_refresh_token_expiry());
 
         self.session_repository
             .create_session(
@@ -541,7 +584,7 @@ impl AuthUseCase {
                 expires_at,
             )
             .await?;
-        
+
         log::debug!("Refresh token rotation successful");
         Ok((new_access_token, new_refresh_token))
     }
@@ -605,7 +648,7 @@ impl AuthUseCase {
         // Validate new password matches confirmation
         if req.new_password != req.confirm_new_password {
             return Err(AppError::ValidationError(
-                "Validation Error".to_string(),
+                "Passwords do not match".to_string(),
                 Some(vec![ValidationDetail {
                     field: "confirm_new_password".to_string(),
                     message: "Passwords do not match".to_string(),
@@ -616,7 +659,7 @@ impl AuthUseCase {
         // Validate new password is not the same as old password
         if req.new_password == req.old_password {
             return Err(AppError::ValidationError(
-                "Validation Error".to_string(),
+                "New password cannot be the same as old password".to_string(),
                 Some(vec![ValidationDetail {
                     field: "new_password".to_string(),
                     message: "New password cannot be the same as old password".to_string(),
@@ -694,10 +737,7 @@ impl AuthUseCase {
     /// # Errors
     ///
     /// Returns `AppError::Forbidden` if user doesn't exist in database.
-    pub async fn verify_user_exists(
-        &self,
-        user_id: uuid::Uuid,
-    ) -> Result<UserResponse, AppError> {
+    pub async fn verify_user_exists(&self, user_id: uuid::Uuid) -> Result<UserResponse, AppError> {
         // Check if user exists in database
         let user: User = self
             .repository
@@ -706,7 +746,10 @@ impl AuthUseCase {
             .ok_or_else(|| AppError::Unauthorized("Unauthorized".to_string()))?;
 
         // Fetch user_details
-        let user_details = self.user_details_repository.find_by_user_id(user.id).await?;
+        let user_details = self
+            .user_details_repository
+            .find_by_user_id(user.id)
+            .await?;
 
         Ok(Self::user_to_response_with_details(user, user_details))
     }
@@ -733,9 +776,7 @@ impl AuthUseCase {
         req.extensions()
             .get::<uuid::Uuid>()
             .copied()
-            .ok_or_else(|| {
-                AppError::Unauthorized("Unauthorized".to_string())
-            })
+            .ok_or_else(|| AppError::Unauthorized("Unauthorized".to_string()))
     }
 
     /// Logs a successful activity.
@@ -781,8 +822,6 @@ impl AuthUseCase {
             .await;
     }
 
-
-
     pub async fn generate_invitation_code(&self) -> Result<String, AppError> {
         // Generate a random 8-character string
         use rand::{distributions::Alphanumeric, Rng};
@@ -791,27 +830,29 @@ impl AuthUseCase {
             .take(8)
             .map(char::from)
             .collect();
-        
+
         // Save with 1 hour TTL
-        self.invitation_code_repository.save_code(code.clone(), std::time::Duration::from_secs(3600)).await?;
+        self.invitation_code_repository
+            .save_code(code.clone(), std::time::Duration::from_secs(3600))
+            .await?;
         Ok(code)
     }
 
-    /// Validates an existing user for linking or checks for conflicts.
-    /// Returns (User, is_restored) if valid, or AppError if conflict.
-    async fn validate_and_link_existing_user(
+
+    /// Validates an existing user for linking and checks for role-based conflicts.
+    async fn validate_existing_user_for_registration(
         &self,
         existing_user: User,
         req: &RegisterRequest,
         normalized_email: &str,
+        conflict_reason: &str,
         ip_address: Option<String>,
         user_agent: Option<String>,
     ) -> Result<(User, bool), AppError> {
-        log::debug!("Register flow found user: {:?} (Active: {})", existing_user.id, existing_user.deleted_at.is_none());
-
-        // Restore deleted user
+        // If soft-deleted, attempt restore
         if existing_user.deleted_at.is_some() {
-             let create_req = CreateUserRequest {
+            log::info!("Restoring soft-deleted user: {}", existing_user.id);
+            let create_req = CreateUserRequest {
                 username: req.username.clone(),
                 email: normalized_email.to_string(),
                 password: req.password.clone(),
@@ -820,21 +861,46 @@ impl AuthUseCase {
             return Ok((restored_user, true));
         }
 
-        // Active User: Guard Clause for 'user' role (Strict Unique)
-        if req.role == "user" {
-            let err = AppError::Conflict("Email or Username already exists".to_string());
+        // Active User Validation
+        
+        // 1. If registering as non-user (admin/etc), strictly forbidden if account exists.
+        //    (Account Uniqueness / Tenant Scope)
+        if req.role != "user" {
+            // Check if existing account has 'user' role anywhere (Scenario 19 mix check)
+            let all_tenants = self.user_tenant_repository.get_all_tenants_for_user(existing_user.id).await?;
+            for tenant_info in all_tenants {
+                if tenant_info.role == "user" {
+                    let err = AppError::Conflict("Cannot register as user - account exists with admin/non-user role".to_string());
+                    self.log_activity_failure(Some(existing_user.id), "register", &err, ip_address, user_agent).await;
+                    return Err(err);
+                }
+            }
+
+            let err = AppError::Conflict(conflict_reason.to_string());
+            log::warn!("Registration conflict: Non-user registration for existing account");
             self.log_activity_failure(Some(existing_user.id), "register", &err, ip_address, user_agent).await;
             return Err(err);
         }
 
-        // Active User: Guard Clause for Password Mismatch
+        // 2. If registering as 'user', check if existing account has any invalid roles (non-user).
+        //    (Global SSo Constraint)
+        let all_tenants = self.user_tenant_repository.get_all_tenants_for_user(existing_user.id).await?;
+        for tenant_info in all_tenants {
+            if tenant_info.role != "user" {
+                let err = AppError::Conflict("Cannot register as user - account exists with admin/non-user role".to_string());
+                log::warn!("Registration conflict: User role request but account has admin/non-user role");
+                self.log_activity_failure(Some(existing_user.id), "register", &err, ip_address, user_agent).await;
+                return Err(err);
+            }
+        }
+
+        // 3. Verify password for linkage security
         if !password::verify_password(&req.password, &existing_user.password_hash)? {
-            let err = AppError::Conflict("Email or Username already exists".to_string());
+            let err = AppError::Conflict(conflict_reason.to_string());
             self.log_activity_failure(Some(existing_user.id), "register", &err, ip_address, user_agent).await;
             return Err(err);
         }
 
-        // Success: Link existing user
         Ok((existing_user, false))
     }
 
@@ -844,7 +910,11 @@ impl AuthUseCase {
         req: &RegisterRequest,
         normalized_email: &str,
     ) -> Result<(User, bool), AppError> {
-        log::debug!("Registering new user [REDACTED] with role '{}' for tenant '{}'", req.role, req.tenant_id);
+        log::debug!(
+            "Registering new user [REDACTED] with role '{}' for tenant '{}'",
+            req.role,
+            req.tenant_id
+        );
 
         let create_req = CreateUserRequest {
             username: req.username.clone(),
@@ -852,10 +922,10 @@ impl AuthUseCase {
             password: req.password.clone(),
         };
         let new_user = self.repository.create(create_req).await?;
-        
+
         // Create user_details for new user
         let _ = self.user_details_repository.create(new_user.id).await?;
-        
+
         Ok((new_user, false))
     }
 
@@ -874,15 +944,15 @@ impl AuthUseCase {
             details: user_details.map(|details| {
                 let (first, last) = match details.full_name {
                     Some(s) => {
-                let parse_name = |name: String| -> (Option<String>, Option<String>) {
-                    if let Some((f, l)) = name.split_once(' ') {
-                        return (Some(f.to_string()), Some(l.to_string()));
+                        let parse_name = |name: String| -> (Option<String>, Option<String>) {
+                            if let Some((f, l)) = name.split_once(' ') {
+                                return (Some(f.to_string()), Some(l.to_string()));
+                            }
+                            (Some(name), None)
+                        };
+                        parse_name(s)
                     }
-                    (Some(name), None)
-                };
-                parse_name(s)
-                    },
-                    None => (None, None)
+                    None => (None, None),
                 };
 
                 UserDetailsResponse {
@@ -893,7 +963,9 @@ impl AuthUseCase {
                     phone_number: details.phone_number,
                     address: details.address,
                     date_of_birth: details.date_of_birth,
-                    profile_picture_url: crate::domains::common::utils::url_helper::to_full_url(details.profile_picture_url),
+                    profile_picture_url: crate::domains::common::utils::url_helper::to_full_url(
+                        details.profile_picture_url,
+                    ),
                     created_at: details.created_at,
                     updated_at: details.updated_at,
                 }

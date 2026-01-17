@@ -3,33 +3,33 @@
 //! This module handles server setup, middleware configuration, database connections,
 //! health monitoring, and graceful shutdown.
 
-use actix_web::{App, HttpServer, HttpResponse, middleware, web, Responder};
+use actix_web::{middleware, web, App, HttpResponse, HttpServer, Responder};
 use chrono::Local;
-use std::io::Write;
 use log::info;
+use std::io::Write;
 use std::sync::OnceLock;
 
 use crate::domains::auth::auth_module::AuthModule;
-use crate::domains::user::user_module::UserModule;
 use crate::domains::tenant::tenant_module::TenantModule;
+use crate::domains::user::user_module::UserModule;
 
 // Repositories
-use crate::domains::user::repositories::user_repository::UserRepository;
-use crate::domains::user::repositories::user_details_repository::UserDetailsRepository;
-use crate::domains::user::repositories::user_session_repository::UserSessionRepository;
-use crate::domains::user::repositories::user_activity_log_repository::UserActivityLogRepository;
-use crate::domains::tenant::repositories::user_tenant_repository::UserTenantRepository;
 use crate::domains::tenant::repositories::tenant_repository::TenantRepository;
+use crate::domains::tenant::repositories::user_tenant_repository::UserTenantRepository;
+use crate::domains::user::repositories::user_activity_log_repository::UserActivityLogRepository;
+use crate::domains::user::repositories::user_details_repository::UserDetailsRepository;
+use crate::domains::user::repositories::user_repository::UserRepository;
+use crate::domains::user::repositories::user_session_repository::UserSessionRepository;
 
 // UseCases
-use crate::domains::user::usecases::user_usecase::UserUseCase;
 use crate::domains::auth::usecases::auth_usecase::AuthUseCase;
-use crate::domains::user::usecases::user_details_usecase::UserDetailsUseCase;
 use crate::domains::tenant::usecases::tenant_usecase::TenantUseCase;
+use crate::domains::user::usecases::user_details_usecase::UserDetailsUseCase;
+use crate::domains::user::usecases::user_usecase::UserUseCase;
 
+use crate::domains::common::infrastructures::postgres_connection;
 use crate::domains::common::middlewares::powered_by_middleware::PoweredByMiddleware;
 use crate::domains::common::middlewares::request_logger_middleware::RequestLoggerMiddleware;
-use crate::domains::common::infrastructures::postgres_connection;
 use std::sync::Arc;
 use tokio::sync::watch;
 
@@ -41,16 +41,17 @@ async fn healthcheck() -> impl Responder {
 }
 
 /// Serves dynamic runtime configuration for the frontend.
-async fn serve_runtime_config(
-    allowed_origins: web::Data<Vec<String>>,
-) -> impl Responder {
+async fn serve_runtime_config(allowed_origins: web::Data<Vec<String>>) -> impl Responder {
     use crate::domains::common::utils::config::Config;
     let config = Config::get();
-    info!("Serving runtime config with allowed origins: {:?}", allowed_origins.get_ref());
-    
+    info!(
+        "Serving runtime config with allowed origins: {:?}",
+        allowed_origins.get_ref()
+    );
+
     // Convert Vec<String> to a comma-separated string for the JS config
     let origins_str = allowed_origins.join(",");
-    
+
     let config_content = format!(
         "window.config = {{ API_KEY: \"{}\", ENDPOINT: \"{}\", ALLOWED_ORIGINS: \"{}\" }};",
         config.api_key, config.endpoint, origins_str
@@ -74,7 +75,7 @@ async fn serve_runtime_config(
 
 pub async fn run_server() -> std::io::Result<()> {
     dotenvy::dotenv().ok();
-    
+
     // Initialize centralized configuration
     use crate::domains::common::utils::config::Config;
     let config = Config::init();
@@ -97,7 +98,7 @@ pub async fn run_server() -> std::io::Result<()> {
     let timestamp = Local::now().format("%Y%m%d_%H%M%S");
     let log_file_path = format!("logs/{}.log", timestamp);
     let current_log_marker = "logs/.current_log";
-    
+
     let _ = std::fs::write(current_log_marker, &log_file_path);
     let log_file = std::fs::OpenOptions::new()
         .create(true)
@@ -123,22 +124,22 @@ pub async fn run_server() -> std::io::Result<()> {
         }
     }
 
-    let dual_writer = DualWriter { 
-        file: std::sync::Mutex::new(log_file)
+    let dual_writer = DualWriter {
+        file: std::sync::Mutex::new(log_file),
     };
 
     static LOGGER_INIT: OnceLock<()> = OnceLock::new();
     LOGGER_INIT.get_or_init(|| {
         let env = env_logger::Env::new().filter_or("LOG_LEVEL", "info");
         use ansi_term::Colour;
-        
+
         env_logger::Builder::from_env(env)
             .format(move |buf, record| {
                 let ts = Local::now().format("%Y%m%d_%H%M%S");
                 let level_str = match record.level() {
                     log::Level::Error => Colour::Red.paint("ERROR"),
-                    log::Level::Warn  => Colour::Yellow.paint("WARN"),
-                    log::Level::Info  => Colour::Green.paint("INFO"),
+                    log::Level::Warn => Colour::Yellow.paint("WARN"),
+                    log::Level::Info => Colour::Green.paint("INFO"),
                     log::Level::Debug => Colour::Blue.paint("DEBUG"),
                     log::Level::Trace => Colour::Purple.paint("TRACE"),
                 };
@@ -149,7 +150,7 @@ pub async fn run_server() -> std::io::Result<()> {
             .target(env_logger::Target::Pipe(Box::new(dual_writer)))
             .init();
     });
-    
+
     info!("Server Version: VERIFIED_FINAL");
     info!("🟢 Starting server initialization");
     info!("📝 Logging to file: {}", log_file_path);
@@ -167,11 +168,18 @@ pub async fn run_server() -> std::io::Result<()> {
     info!("Database Type: {}", db_type);
 
     let db = match db_type.as_str() {
-        "postgres" => postgres_connection::initialize().await
+        "postgres" => postgres_connection::initialize()
+            .await
             .map_err(|e| std::io::Error::other(format!("Postgres initialization failed: {}", e)))?,
-        "sqlite" => crate::domains::common::infrastructures::sqlite_connection::initialize().await
+        "sqlite" => crate::domains::common::infrastructures::sqlite_connection::initialize()
+            .await
             .map_err(|e| std::io::Error::other(format!("SQLite initialization failed: {}", e)))?,
-        _ => return Err(std::io::Error::other(format!("Unsupported CORE_DB_TYPE: {}", db_type))),
+        _ => {
+            return Err(std::io::Error::other(format!(
+                "Unsupported CORE_DB_TYPE: {}",
+                db_type
+            )))
+        }
     };
 
     // ================================================================================================
@@ -197,12 +205,18 @@ pub async fn run_server() -> std::io::Result<()> {
     let server_host = &config.server_host;
     let server_port = config.server_port;
 
-    info!("🚀 Actix server running on http://{}:{}", server_host, server_port);
+    info!(
+        "🚀 Actix server running on http://{}:{}",
+        server_host, server_port
+    );
 
     // RocksDB Cache Initialization
     use crate::domains::common::infrastructures::rocksdb_connection::RocksDbCache;
-    let cache = Arc::new(RocksDbCache::new_with_recovery("./rocksdb_cache")
-        .map_err(|e| std::io::Error::other(format!("Failed to initialize RocksDB cache: {}", e)))?);
+    let cache = Arc::new(
+        RocksDbCache::new_with_recovery("./rocksdb_cache").map_err(|e| {
+            std::io::Error::other(format!("Failed to initialize RocksDB cache: {}", e))
+        })?,
+    );
 
     // ================================================================================================
     // 🧠 REPOSITORY SECTION
@@ -241,7 +255,7 @@ pub async fn run_server() -> std::io::Result<()> {
     let db_for_factory = db.clone();
     let secret_for_factory = secret_key.clone();
     let allowed_origins_for_factory = allowed_origins.clone();
-    
+
     let user_usecase_for_factory = user_usecase.clone();
     let auth_usecase_for_factory = auth_usecase.clone();
     let user_details_usecase_for_factory = user_details_usecase.clone();
@@ -257,35 +271,34 @@ pub async fn run_server() -> std::io::Result<()> {
         for origin in allowed_origins_for_factory.iter() {
             cors = cors.allowed_origin(origin);
         }
-        
+
         let mut app = App::new()
             .app_data(web::Data::from(secret_for_factory.clone()))
             .app_data(web::Data::from(db_for_factory.clone()))
-            .app_data(web::JsonConfig::default()
-                .error_handler(crate::domains::common::errors::json_error_handler::json_error_handler)
-            )
-            .app_data(web::PathConfig::default()
-                .error_handler(crate::domains::common::errors::path_error_handler::path_error_handler)
-            )
-            
+            .app_data(web::JsonConfig::default().error_handler(
+                crate::domains::common::errors::json_error_handler::json_error_handler,
+            ))
+            .app_data(web::PathConfig::default().error_handler(
+                crate::domains::common::errors::path_error_handler::path_error_handler,
+            ))
             // Register App Data
             .app_data(web::Data::new(user_usecase_for_factory.clone()))
             .app_data(web::Data::new(auth_usecase_for_factory.clone()))
             .app_data(web::Data::new(user_details_usecase_for_factory.clone()))
             .app_data(web::Data::new(tenant_usecase_for_factory.clone()))
             .app_data(web::Data::from(allowed_origins_for_factory.clone()))
-
             // Register Modules
             .configure(AuthModule::configure_module)
-            .configure(UserModule::configure_module)
-            .configure(TenantModule::configure_module)
+            .service(
+                web::scope("/api")
+                    .configure(UserModule::configure_module)
+                    .configure(TenantModule::configure_module)
+            )
             .wrap(PoweredByMiddleware)
             .wrap(RequestLoggerMiddleware)
             .wrap(middleware::Compress::default())
-
             .route("/health", web::get().to(healthcheck))
             .route("/runtime-env.js", web::get().to(serve_runtime_config))
-            
             .wrap(cors);
 
         // Only serve static files if web/dist exists (production mode)
@@ -293,9 +306,9 @@ pub async fn run_server() -> std::io::Result<()> {
             app = app.service(
                 actix_files::Files::new("/", "./web/dist")
                     .index_file("index.html")
-                    .default_handler(
-                        web::to(|| actix_files::NamedFile::open_async("./web/dist/index.html"))
-                    )
+                    .default_handler(web::to(|| {
+                        actix_files::NamedFile::open_async("./web/dist/index.html")
+                    })),
             );
         }
 
@@ -317,14 +330,17 @@ pub async fn run_server() -> std::io::Result<()> {
 
     let srv_handle = srv.handle();
     let (shutdown_tx, shutdown_rx) = watch::channel(false);
-    
+
     // Launch health monitor based on DB type
     match db_type.as_str() {
         "postgres" => postgres_connection::monitor_health(db.clone(), shutdown_tx.clone()),
-        "sqlite" => crate::domains::common::infrastructures::sqlite_connection::monitor_health(db.clone(), shutdown_tx.clone()),
+        "sqlite" => crate::domains::common::infrastructures::sqlite_connection::monitor_health(
+            db.clone(),
+            shutdown_tx.clone(),
+        ),
         _ => {} // Should not happen given earlier check
     }
-    
+
     let db_for_shutdown = db.clone();
 
     let shutdown_tx_clone = shutdown_tx.clone();
@@ -344,7 +360,7 @@ pub async fn run_server() -> std::io::Result<()> {
                 }
             }
         }
-        
+
         srv_handle.stop(false).await;
 
         let _ = shutdown_tx_clone.send(true);
@@ -357,7 +373,13 @@ pub async fn run_server() -> std::io::Result<()> {
     tokio::spawn(async move {
         match db_type_for_shutdown.as_str() {
             "postgres" => postgres_connection::shutdown(db_for_shutdown, db_rx).await,
-            "sqlite" => crate::domains::common::infrastructures::sqlite_connection::shutdown(db_for_shutdown, db_rx).await,
+            "sqlite" => {
+                crate::domains::common::infrastructures::sqlite_connection::shutdown(
+                    db_for_shutdown,
+                    db_rx,
+                )
+                .await
+            }
             _ => {}
         }
     });

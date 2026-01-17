@@ -1,11 +1,12 @@
-
 use super::url_helper::*;
+use crate::domains::common::utils::config::Config;
 
 #[test]
 fn test_to_full_url_with_relative_path() {
-    std::env::set_var("BASE_URL", "http://localhost:5500");
+    let base_url = &Config::get().endpoint;
+    let expected = format!("{}{}", base_url, "/assets/profiles/test.png");
     let result = to_full_url(Some("/assets/profiles/test.png".to_string()));
-    assert_eq!(result, Some("http://localhost:5500/assets/profiles/test.png".to_string()));
+    assert_eq!(result, Some(expected));
 }
 
 #[test]
@@ -25,10 +26,4 @@ fn test_to_full_url_with_none() {
     let result = to_full_url(None);
     assert_eq!(result, None);
 }
-
-#[test]
-fn test_to_full_url_uses_default_base_url() {
-    std::env::remove_var("BASE_URL");
-    let result = to_full_url(Some("/test.png".to_string()));
-    assert_eq!(result, Some("http://localhost:5500/test.png".to_string()));
-}
+// Removed test_to_full_url_uses_default_base_url as it tests Config behavior which is immutable singleton

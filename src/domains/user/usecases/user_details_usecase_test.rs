@@ -1,17 +1,16 @@
-
 #[cfg(test)]
 mod tests {
-    use crate::domains::user::usecases::user_details_usecase::UserDetailsUseCase;
-    use crate::domains::user::repositories::user_details_repository::UserDetailsRepositoryTrait;
-    use crate::domains::user::entities::user_details::Model as UserDetails;
-    use crate::domains::user::dtos::user_details_dto::UpdateUserDetailsRequest;
     use crate::domains::common::errors::AppError;
+    use crate::domains::user::dtos::user_details_dto::UpdateUserDetailsRequest;
+    use crate::domains::user::entities::user_details::Model as UserDetails;
+    use crate::domains::user::repositories::user_details_repository::UserDetailsRepositoryTrait;
+    use crate::domains::user::usecases::user_details_usecase::UserDetailsUseCase;
     use async_trait::async_trait;
-    use std::sync::Arc;
+    use chrono::{NaiveDate, Utc};
     use mockall::mock;
     use mockall::predicate::*;
+    use std::sync::Arc;
     use uuid::Uuid;
-    use chrono::{Utc, NaiveDate};
 
     // Mocking UserDetailsRepositoryTrait
     mock! {
@@ -71,10 +70,10 @@ mod tests {
             .expect_update()
             .with(
                 eq(user_id),
-                eq(Some("John Smith".to_string())), 
+                eq(Some("John Smith".to_string())),
                 eq(Some("+1234567890".to_string())),
                 eq(None),
-                eq(None)
+                eq(None),
             )
             .times(1)
             .returning(move |_, _, _, _, _| Ok(updated_clone.clone()));

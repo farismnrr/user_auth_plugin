@@ -502,10 +502,61 @@ onMounted(() => {
         }
     </script>
 </body>
+        }
+    </script>
+</body>
 </html>
 ```
 
 ---
+
+## Role-Based Access Control (RBAC)
+
+Implementing RBAC in your frontend provides a better user experience by hiding restricted areas from unauthorized users. **Note:** Always rely on backend validation for data security.
+
+### Decoding the Token
+
+The access token is a standard JWT. You can decode it to access the user's role.
+
+**Recommended Library:** `jwt-decode`
+
+```bash
+npm install jwt-decode
+```
+
+### Implementation Example (Next.js/React)
+
+```typescript
+import { jwtDecode } from "jwt-decode";
+
+interface JwtPayload {
+  sub: string;
+  role: "admin" | "user";
+  tenant_id: string;
+  exp: number;
+}
+
+export const getUserRole = (token: string): string | null => {
+  try {
+    const decoded = jwtDecode<JwtPayload>(token);
+    return decoded.role;
+  } catch (error) {
+    return null;
+  }
+};
+
+// Protected Route Component
+export function AdminGuard({ children }: { children: React.ReactNode }) {
+  const { accessToken } = useAuthStore();
+  const role = accessToken ? getUserRole(accessToken) : null;
+
+  if (role !== 'admin') {
+    return <div>Access Denied: Admins Only</div>;
+  }
+
+  return <>{children}</>;
+}
+```
 
 ## Next Steps
 

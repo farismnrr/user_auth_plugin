@@ -54,7 +54,7 @@ impl JwtService {
         let config = Config::get();
 
         Self {
-            secret: config.secret_key.clone(),
+            secret: config.jwt_secret.clone(),
             access_token_expiry: config.access_token_expiry,
             refresh_token_expiry: config.refresh_token_expiry,
         }

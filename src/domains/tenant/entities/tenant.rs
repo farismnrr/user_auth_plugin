@@ -13,6 +13,8 @@ pub struct Model {
     #[sea_orm(unique)]
     pub name: String,
     pub description: Option<String>,
+    #[sea_orm(unique)]
+    pub api_key: Option<String>,
     pub deleted_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

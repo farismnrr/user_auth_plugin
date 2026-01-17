@@ -38,12 +38,13 @@ You will be prompted to enter:
   "status": true,
   "message": "Tenant created successfully",
   "data": {
-    "tenant_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    "tenant_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "api_key": "your-tenant-api-key"
   }
 }
 ```
 
-> ⚠️ **Save the `tenant_id`** - you'll need this for your application configuration.
+> ⚠️ **Save the `tenant_id` and `api_key`** - you'll need these for your application configuration.
 
 ### Option B: Using cURL
 
@@ -140,6 +141,7 @@ See [Frontend Implementation](./04-frontend-implementation.md) for code examples
 
 | Variable | Description |
 |----------|-------------|
+| `JWT_SECRET` | Secret key for signing JWT tokens |
 | `TENANT_SECRET_KEY` | Secret for creating tenants via API |
 | `API_KEY` | Required header (`X-API-Key`) for auth endpoints |
 | `VITE_ALLOWED_ORIGINS` | Comma-separated list of allowed client domains |

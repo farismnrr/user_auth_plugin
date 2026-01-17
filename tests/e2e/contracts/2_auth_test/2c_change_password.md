@@ -61,7 +61,7 @@ Change authenticated user's password.
   ```json
   {
     "status": false,
-    "message": "Validation Error",
+    "message": "Passwords do not match",
     "details": [
       {
         "field": "confirm_new_password",
@@ -89,7 +89,7 @@ Change authenticated user's password.
   ```json
   {
     "status": false,
-    "message": "Validation Error",
+    "message": "Password too weak",
     "details": [
       {
         "field": "new_password",
@@ -117,7 +117,7 @@ Change authenticated user's password.
   ```json
   {
     "status": false,
-    "message": "Validation Error",
+    "message": "New password cannot be the same as old password",
     "details": [
       {
         "field": "new_password",

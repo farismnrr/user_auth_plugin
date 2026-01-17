@@ -66,7 +66,7 @@ Create a new tenant using tenant secret key (bootstrapping).
   ```
 - **Side Effects**: None.
 
-### 5. Create tenant with empty name (422 Validation Error)
+### 5. Create tenant with empty name (422)
 - **URL**: `http://localhost:5500/api/tenants`
 - **Method**: `POST`
 - **Pre-conditions**: None.
@@ -78,7 +78,7 @@ Create a new tenant using tenant secret key (bootstrapping).
   ```json
   {
     "status": false,
-    "message": "Validation Error",
+    "message": "Name cannot be empty",
     "details": [
       {
         "field": "name",
@@ -89,7 +89,7 @@ Create a new tenant using tenant secret key (bootstrapping).
   ```
 - **Side Effects**: None.
 
-### 6. Validation: Name too long (> 255 chars) (422 Validation Error)
+### 6. Validation: Name too long (> 255 chars) (422)
 - **URL**: `http://localhost:5500/api/tenants`
 - **Method**: `POST`
 - **Pre-conditions**: None.
@@ -101,7 +101,7 @@ Create a new tenant using tenant secret key (bootstrapping).
   ```json
   {
     "status": false,
-    "message": "Validation Error",
+    "message": "Name too long",
     "details": [
       {
         "field": "name",
@@ -112,7 +112,7 @@ Create a new tenant using tenant secret key (bootstrapping).
   ```
 - **Side Effects**: None.
 
-### 7. Validation: Name too short / empty string (422 Validation Error)
+### 7. Validation: Name too short / empty string (422)
 - **URL**: `http://localhost:5500/api/tenants`
 - **Method**: `POST`
 - **Pre-conditions**: None.
@@ -124,7 +124,7 @@ Create a new tenant using tenant secret key (bootstrapping).
   ```json
   {
     "status": false,
-    "message": "Validation Error",
+    "message": "Name cannot be empty",
     "details": [
       {
         "field": "name",
@@ -147,7 +147,7 @@ Create a new tenant using tenant secret key (bootstrapping).
   ```json
   {
     "status": false,
-    "message": "Validation Error",
+    "message": "Invalid characters in name",
     "details": [
       {
         "field": "name",
@@ -171,7 +171,7 @@ Create a new tenant using tenant secret key (bootstrapping).
   ```json
   {
     "status": false,
-    "message": "Validation Error",
+    "message": "Invalid characters in name",
     "details": [
       {
         "field": "name",
@@ -196,11 +196,13 @@ Create a new tenant using tenant secret key (bootstrapping).
   }
   ```
 - **Expected Response**:
-  ```json
   {
     "status": true,
     "message": "Tenant created successfully",
-    "data": { "tenant_id": "uuid" }
+    "data": { 
+      "tenant_id": "uuid",
+      "api_key": "string"
+    }
   }
   ```
 - **Side Effects**:
@@ -219,11 +221,13 @@ Create a new tenant using tenant secret key (bootstrapping).
   }
   ```
 - **Expected Response**:
-  ```json
   {
     "status": true,
     "message": "Tenant already exists",
-    "data": { "tenant_id": "uuid" }
+    "data": { 
+      "tenant_id": "uuid",
+      "api_key": "string"
+    }
   }
   ```
 - **Side Effects**: None (Idempotent return).

@@ -1,11 +1,11 @@
-use crate::domains::user::dtos::user_details_dto::UpdateUserDetailsRequest;
-use crate::domains::common::dtos::response_dto::SuccessResponseDTO;
-use serde_json::json;
-use crate::domains::common::errors::AppError;
-use crate::domains::user::usecases::user_details_usecase::UserDetailsUseCase;
 use crate::domains::auth::usecases::auth_usecase::AuthUseCase;
-use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use crate::domains::common::dtos::response_dto::SuccessResponseDTO;
+use crate::domains::common::errors::AppError;
+use crate::domains::user::dtos::user_details_dto::UpdateUserDetailsRequest;
+use crate::domains::user::usecases::user_details_usecase::UserDetailsUseCase;
 use actix_multipart::Multipart;
+use actix_web::{web, HttpRequest, HttpResponse, Responder};
+use serde_json::json;
 use std::sync::Arc;
 
 /// Update current user's details (from JWT)
@@ -15,9 +15,11 @@ pub async fn update_user_details(
     req: HttpRequest,
 ) -> Result<impl Responder, AppError> {
     let user_id = AuthUseCase::extract_user_id_from_request(&req)?;
-    
+
     // Validation is handled in usecase
-    usecase.update_user_details(user_id, body.into_inner()).await?;
+    usecase
+        .update_user_details(user_id, body.into_inner())
+        .await?;
 
     Ok(HttpResponse::Ok().json(SuccessResponseDTO::no_data(
         "User details updated successfully",

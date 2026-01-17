@@ -7,8 +7,22 @@ export function useSSO() {
     const authStore = useAuthStore()
 
     const generateSSOParams = () => {
+        const queryParams = new URLSearchParams(window.location.search)
+        
+        // Initial extraction from URL query params (priority)
+        const paramRedirectUri = queryParams.get('redirect_uri')
+        const paramTenantId = queryParams.get('tenant_id')
+        const paramRole = queryParams.get('role')
+
+        // If params exist in URL, save to storage
+        if (paramRedirectUri) sessionStorage.setItem('sso_redirect_uri', paramRedirectUri)
+        if (paramTenantId) sessionStorage.setItem('sso_tenant_id', paramTenantId)
+        if (paramRole) sessionStorage.setItem('sso_role', paramRole)
+
+        // Retrieve from storage
         const redirectUri = sessionStorage.getItem('sso_redirect_uri')
         const tenantId = sessionStorage.getItem('sso_tenant_id')
+        const role = sessionStorage.getItem('sso_role')
 
         if (redirectUri && tenantId) {
             let state = authStore.ssoState
@@ -31,7 +45,10 @@ export function useSSO() {
             }
 
             // Update URL with full params without redirecting
-            const newUrl = `${window.location.pathname}?tenant_id=${tenantId}&redirect_uri=${redirectUri}&response_type=code&scope=openid&state=${state}&nonce=${nonce}`
+            let newUrl = `${window.location.pathname}?tenant_id=${tenantId}&redirect_uri=${redirectUri}&response_type=code&scope=openid&state=${state}&nonce=${nonce}`
+            if (role) {
+                newUrl += `&role=${role}`
+            }
             window.history.replaceState({}, '', newUrl)
         }
     }

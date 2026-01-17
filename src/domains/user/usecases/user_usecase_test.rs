@@ -1,18 +1,18 @@
 #[cfg(test)]
 mod tests {
-    use crate::domains::user::usecases::user_usecase::UserUseCase;
-    use crate::domains::user::repositories::user_repository::UserRepositoryTrait;
-    use crate::domains::user::repositories::user_details_repository::UserDetailsRepositoryTrait;
     use crate::domains::tenant::repositories::user_tenant_repository::UserTenantRepositoryTrait;
     use crate::domains::user::entities::user::Model as User;
+    use crate::domains::user::repositories::user_details_repository::UserDetailsRepositoryTrait;
+    use crate::domains::user::repositories::user_repository::UserRepositoryTrait;
+    use crate::domains::user::usecases::user_usecase::UserUseCase;
 
     use crate::domains::common::errors::AppError;
     use async_trait::async_trait;
-    use std::sync::Arc;
+    use chrono::Utc;
     use mockall::mock;
     use mockall::predicate::*;
+    use std::sync::Arc;
     use uuid::Uuid;
-    use chrono::Utc;
 
     // Mocking UserRepositoryTrait
     mock! {
@@ -50,6 +50,7 @@ mod tests {
         impl UserTenantRepositoryTrait for UserTenantRepository {
              async fn add_user_to_tenant(&self, user_id: Uuid, tenant_id: Uuid, role: String) -> Result<(), AppError>;
              async fn get_user_role_in_tenant(&self, user_id: Uuid, tenant_id: Uuid) -> Result<Option<String>, AppError>;
+             async fn get_all_tenants_for_user(&self, user_id: Uuid) -> Result<Vec<crate::domains::tenant::repositories::user_tenant_repository::UserTenantInfo>, AppError>;
         }
     }
 

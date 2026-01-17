@@ -1,5 +1,7 @@
-use crate::domains::user::entities::user_session::{self, Entity as UserSessionEntity, Model as UserSession};
 use crate::domains::common::errors::AppError;
+use crate::domains::user::entities::user_session::{
+    self, Entity as UserSessionEntity, Model as UserSession,
+};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sea_orm::*;
@@ -23,10 +25,8 @@ pub trait UserSessionRepositoryTrait: Send + Sync {
     ) -> Result<UserSession, AppError>;
 
     /// Finds a session by refresh token hash.
-    async fn find_by_refresh_token_hash(
-        &self,
-        hash: &str,
-    ) -> Result<Option<UserSession>, AppError>;
+    async fn find_by_refresh_token_hash(&self, hash: &str)
+        -> Result<Option<UserSession>, AppError>;
 
     /// Deletes a specific session by ID.
     async fn delete_session(&self, id: Uuid) -> Result<(), AppError>;
@@ -64,14 +64,13 @@ impl UserSessionRepositoryTrait for UserSessionRepository {
         expires_at: DateTime<Utc>,
     ) -> Result<UserSession, AppError> {
         let session = user_session::ActiveModel {
-            id: Set(Uuid::new_v4()),  // Generate UUID in repository
+            id: Set(Uuid::new_v4()), // Generate UUID in repository
             user_id: Set(user_id),
             refresh_token_hash: Set(refresh_token_hash),
             user_agent: Set(user_agent),
             ip_address: Set(ip_address),
             expires_at: Set(expires_at),
-            created_at: Set(Utc::now().into()),
-            ..Default::default()
+            created_at: Set(Utc::now()),
         };
 
         UserSessionEntity::insert(session.clone())

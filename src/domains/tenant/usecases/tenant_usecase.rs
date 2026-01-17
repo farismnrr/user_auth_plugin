@@ -1,5 +1,7 @@
-use crate::domains::tenant::dtos::tenant_dto::{CreateTenantRequest, TenantResponse, UpdateTenantRequest};
 use crate::domains::common::errors::{AppError, ValidationDetail};
+use crate::domains::tenant::dtos::tenant_dto::{
+    CreateTenantRequest, TenantResponse, UpdateTenantRequest,
+};
 use crate::domains::tenant::repositories::tenant_repository::TenantRepositoryTrait;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -34,21 +36,24 @@ impl TenantUseCase {
     /// # Returns
     ///
     /// * `Result<(TenantResponse, bool), AppError>` - (Tenant data, created_flag)
-    pub async fn create_tenant(&self, req: CreateTenantRequest) -> Result<(TenantResponse, bool), AppError> {
+    pub async fn create_tenant(
+        &self,
+        req: CreateTenantRequest,
+    ) -> Result<(TenantResponse, bool), AppError> {
         // Validate name length
         if req.name.is_empty() {
             return Err(AppError::ValidationError(
-                "Validation Error".to_string(),
+                "Name cannot be empty".to_string(),
                 Some(vec![ValidationDetail {
                     field: "name".to_string(),
                     message: "Name cannot be empty".to_string(),
                 }]),
             ));
         }
-        
+
         if req.name.len() > 255 {
             return Err(AppError::ValidationError(
-                "Validation Error".to_string(),
+                "Name too long".to_string(),
                 Some(vec![ValidationDetail {
                     field: "name".to_string(),
                     message: "Name too long".to_string(),
@@ -56,15 +61,29 @@ impl TenantUseCase {
             ));
         }
 
+        if !req.name.chars().all(|c| c.is_ascii_alphanumeric() || c == ' ' || c == '_' || c == '-') {
+            return Err(AppError::ValidationError(
+                "Invalid characters in name".to_string(),
+                Some(vec![ValidationDetail {
+                    field: "name".to_string(),
+                    message: "Invalid characters in name".to_string(),
+                }]),
+            ));
+        }
+
         // Check if tenant name already exists (including deleted)
-        if let Some(existing_tenant) = self.tenant_repo.find_by_name_with_deleted(&req.name).await? {
+        if let Some(existing_tenant) = self
+            .tenant_repo
+            .find_by_name_with_deleted(&req.name)
+            .await?
+        {
             // If tenant is deleted, restore it
             if existing_tenant.deleted_at.is_some() {
                 let updated_req = UpdateTenantRequest {
                     name: Some(req.name),
                     description: req.description.clone(),
                 };
-                
+
                 // We need to support "restoring" in repository or handle it via update.
                 // However, standard update checks for id existence first.
                 // Since we found it, it exists.
@@ -76,17 +95,23 @@ impl TenantUseCase {
                 // tenant.updated_at = now
                 // tenant.name = ...
                 // It does NOT touch deleted_at.
-                
+
                 // Let's implement restore in repository is cleanest.
                 // For now, let's assume we add restore method.
                 self.tenant_repo.restore(existing_tenant.id).await?;
-                
+
                 // After restore, we might want to update description if provided.
                 if req.description.is_some() {
-                    self.tenant_repo.update(existing_tenant.id, updated_req).await?;
+                    self.tenant_repo
+                        .update(existing_tenant.id, updated_req)
+                        .await?;
                 }
-                
-                let restored = self.tenant_repo.find_by_id(existing_tenant.id).await?.unwrap();
+
+                let restored = self
+                    .tenant_repo
+                    .find_by_id(existing_tenant.id)
+                    .await?
+                    .unwrap();
                 return Ok((TenantResponse::from(restored), true)); // Treated as created (restored)
             }
 
@@ -148,7 +173,7 @@ impl TenantUseCase {
         if let Some(ref name) = req.name {
             if name.is_empty() {
                 return Err(AppError::ValidationError(
-                    "Validation Error".to_string(),
+                    "Name cannot be empty".to_string(),
                     Some(vec![ValidationDetail {
                         field: "name".to_string(),
                         message: "Name cannot be empty".to_string(),
@@ -157,7 +182,7 @@ impl TenantUseCase {
             }
             if name.len() > 255 {
                 return Err(AppError::ValidationError(
-                    "Validation Error".to_string(),
+                    "Name too long".to_string(),
                     Some(vec![ValidationDetail {
                         field: "name".to_string(),
                         message: "Name too long".to_string(),

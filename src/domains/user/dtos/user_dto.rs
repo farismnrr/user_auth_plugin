@@ -1,7 +1,7 @@
+use crate::domains::user::dtos::user_details_dto::UserDetailsResponse;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::domains::user::dtos::user_details_dto::UserDetailsResponse;
 
 /// Request DTO for creating a new user.
 ///

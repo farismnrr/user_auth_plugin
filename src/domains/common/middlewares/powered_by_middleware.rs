@@ -4,9 +4,10 @@
 
 use actix_web::{
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
-    Error, http::header,
+    http::header,
+    Error,
 };
-use futures_util::future::{ok, Ready, LocalBoxFuture};
+use futures_util::future::{ok, LocalBoxFuture, Ready};
 use log::debug;
 
 /// Middleware that adds an `X-Powered-By` header to responses.
@@ -44,7 +45,10 @@ where
     type Error = Error;
     type Future = LocalBoxFuture<'static, Result<Self::Response, Self::Error>>;
 
-    fn poll_ready(&self, ctx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+    fn poll_ready(
+        &self,
+        ctx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Result<(), Self::Error>> {
         self.service.poll_ready(ctx)
     }
 
@@ -57,7 +61,10 @@ where
                 header::HeaderName::from_static("x-powered-by"),
                 header::HeaderValue::from_static("IoTNet"),
             );
-            debug!("[Middleware | PoweredBy] set 'x-powered-by' header for path='{}'", path);
+            debug!(
+                "[Middleware | PoweredBy] set 'x-powered-by' header for path='{}'",
+                path
+            );
             Ok(res)
         })
     }

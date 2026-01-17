@@ -1,6 +1,6 @@
 use crate::domains::common::dtos::response_dto::SuccessResponseDTO;
-use crate::domains::tenant::dtos::tenant_dto::{CreateTenantRequest, UpdateTenantRequest};
 use crate::domains::common::errors::AppError;
+use crate::domains::tenant::dtos::tenant_dto::{CreateTenantRequest, UpdateTenantRequest};
 use crate::domains::tenant::usecases::tenant_usecase::TenantUseCase;
 use actix_web::{web, HttpResponse, Responder};
 use std::sync::Arc;
@@ -29,22 +29,26 @@ pub async fn create_tenant(
     req: web::Json<CreateTenantRequest>,
 ) -> Result<impl Responder, AppError> {
     let (tenant, created) = tenant_usecase.create_tenant(req.into_inner()).await?;
-    
+
     if created {
-        return Ok(HttpResponse::Created().json(SuccessResponseDTO::new(
-            "Tenant created successfully",
-            json!({ 
-                "tenant_id": tenant.id
-        }),
-        )));
+        return Ok(HttpResponse::Created().json(serde_json::json!({
+            "status": true,
+            "message": "Tenant created successfully",
+            "data": {
+                "tenant_id": tenant.id,
+                "api_key": tenant.api_key
+            }
+        })));
     }
 
-    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
-        "Tenant already exists",
-        json!({ 
-            "tenant_id": tenant.id
-        }),
-    )))
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "status": true,
+        "message": "Tenant already exists",
+        "data": {
+            "tenant_id": tenant.id,
+            "api_key": tenant.api_key
+        }
+    })))
 }
 
 /// Gets a tenant by ID.
@@ -62,7 +66,7 @@ pub async fn get_tenant(
     id: web::Path<Uuid>,
 ) -> Result<impl Responder, AppError> {
     let tenant = tenant_usecase.get_tenant(id.into_inner()).await?;
-    
+
     Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
         "Tenant retrieved successfully",
         json!({ "tenant": tenant }),
@@ -83,7 +87,7 @@ pub async fn get_all_tenants(
 ) -> Result<impl Responder, AppError> {
     let tenants = tenant_usecase.get_all_tenants().await?;
     let total = tenants.len();
-    
+
     let mut total_pages = 0;
     if total > 0 {
         total_pages = (total as f64 / 10.0).ceil() as u64;
@@ -119,8 +123,10 @@ pub async fn update_tenant(
     id: web::Path<Uuid>,
     req: web::Json<UpdateTenantRequest>,
 ) -> Result<impl Responder, AppError> {
-    let _tenant = tenant_usecase.update_tenant(id.into_inner(), req.into_inner()).await?;
-    
+    let _tenant = tenant_usecase
+        .update_tenant(id.into_inner(), req.into_inner())
+        .await?;
+
     Ok(HttpResponse::Ok().json(SuccessResponseDTO::<()>::no_data(
         "Tenant updated successfully",
     )))
@@ -142,7 +148,7 @@ pub async fn delete_tenant(
 ) -> Result<impl Responder, AppError> {
     log::info!("Attempting to delete tenant with ID: {}", id);
     tenant_usecase.delete_tenant(id.into_inner()).await?;
-    
+
     Ok(HttpResponse::Ok().json(SuccessResponseDTO::<()>::no_data(
         "Tenant deleted successfully",
     )))

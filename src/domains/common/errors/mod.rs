@@ -87,7 +87,7 @@ impl ResponseError for AppError {
             AppError::ValidationError(_, d) => d.clone(),
             _ => None,
         };
-        
+
         let error_response = ErrorResponse {
             status: false,
             message: self.to_string(),

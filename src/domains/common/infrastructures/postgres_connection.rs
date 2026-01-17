@@ -28,10 +28,10 @@ use tokio::sync::watch;
 /// Returns an error if the connection fails or database creation fails.
 pub async fn initialize() -> anyhow::Result<Arc<DatabaseConnection>> {
     dotenvy::dotenv().ok();
-    
+
     use crate::domains::common::utils::config::Config;
     let config = Config::get();
-    
+
     let host = &config.db_host;
     let port = &config.db_port;
     let user = &config.db_user;
@@ -39,9 +39,9 @@ pub async fn initialize() -> anyhow::Result<Arc<DatabaseConnection>> {
     let name = &config.db_name;
 
     log::info!("Connecting to Postgres at {}:{}/{}", host, port, name);
-    
+
     let db = try_connect(host, port, user, pass, name).await?;
-    
+
     log::info!("✅ Postgres connected successfully");
     Ok(Arc::new(db))
 }
@@ -51,7 +51,13 @@ pub async fn initialize() -> anyhow::Result<Arc<DatabaseConnection>> {
 /// This function first tries to connect directly to the target database. If that fails,
 /// it connects to the default 'postgres' database to check if the target database exists,
 /// and creates it if necessary.
-async fn try_connect(host: &str, port: &str, user: &str, pass: &str, name: &str) -> anyhow::Result<DatabaseConnection> {
+async fn try_connect(
+    host: &str,
+    port: &str,
+    user: &str,
+    pass: &str,
+    name: &str,
+) -> anyhow::Result<DatabaseConnection> {
     let url = format!("postgres://{}:{}@{}:{}/{}", user, pass, host, port, name);
 
     let mut opt = ConnectOptions::new(url.clone());
@@ -66,13 +72,17 @@ async fn try_connect(host: &str, port: &str, user: &str, pass: &str, name: &str)
     match Database::connect(opt.clone()).await {
         Ok(db) => return Ok(db),
         Err(e) => {
-            log::warn!("Direct connect to target DB failed: {}. Trying to create DB if missing", e);
+            log::warn!(
+                "Direct connect to target DB failed: {}. Trying to create DB if missing",
+                e
+            );
         }
     }
 
     let admin_url = format!("postgres://{}:{}@{}:{}/postgres", user, pass, host, port);
     let mut admin_opt = ConnectOptions::new(admin_url);
-    admin_opt.max_connections(1)
+    admin_opt
+        .max_connections(1)
         .connect_timeout(Duration::from_secs(5))
         .sqlx_logging_level(log::LevelFilter::Debug);
 
@@ -122,17 +132,17 @@ pub fn monitor_health(db: Arc<DatabaseConnection>, shutdown_tx: watch::Sender<bo
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(5));
         interval.tick().await;
-        
+
         loop {
             interval.tick().await;
-            
+
             let ping_result = db
                 .query_one(Statement::from_string(
                     sea_orm::DatabaseBackend::Postgres,
                     "SELECT 1".to_string(),
                 ))
                 .await;
-            
+
             if let Err(e) = ping_result {
                 log::error!("❌ Postgres health check failed: {}", e);
                 log::error!("🛑 Triggering server shutdown due to database disconnection");
@@ -154,9 +164,9 @@ pub fn monitor_health(db: Arc<DatabaseConnection>, shutdown_tx: watch::Sender<bo
 pub async fn shutdown(db: Arc<DatabaseConnection>, shutdown_rx: watch::Receiver<bool>) {
     let mut rx = shutdown_rx;
     let _ = rx.changed().await;
-    
+
     let db_owned = Arc::try_unwrap(db).unwrap_or_else(|arc| (*arc).clone());
-    
+
     if let Err(e) = db_owned.close().await {
         log::error!("Error closing database connection: {}", e);
     }

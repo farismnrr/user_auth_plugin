@@ -4,30 +4,30 @@ use crate::domains::common::errors::{AppError, ValidationDetail};
 pub fn validate_username(username: &str) -> Result<(), AppError> {
     log::debug!("Checking username (len: {})", username.trim().len());
     let trimmed = username.trim();
-    
+
     if trimmed.is_empty() {
         return Err(AppError::ValidationError(
-            "Validation Error".to_string(),
+            "Username cannot be empty".to_string(),
             Some(vec![ValidationDetail {
                 field: "username".to_string(),
                 message: "Username cannot be empty".to_string(),
             }]),
         ));
     }
-    
+
     if trimmed.len() < 3 {
         return Err(AppError::ValidationError(
-             "Validation Error".to_string(),
+            "Username too short".to_string(),
             Some(vec![ValidationDetail {
                 field: "username".to_string(),
                 message: "Username too short".to_string(),
             }]),
         ));
     }
-    
+
     if trimmed.len() > 50 {
         return Err(AppError::ValidationError(
-             "Validation Error".to_string(),
+            "Username too long".to_string(),
             Some(vec![ValidationDetail {
                 field: "username".to_string(),
                 message: "Username too long".to_string(),
@@ -36,9 +36,12 @@ pub fn validate_username(username: &str) -> Result<(), AppError> {
     }
 
     // Check for allowed characters (alphanumeric, underscore, dash)
-    if !trimmed.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-') {
+    if !trimmed
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+    {
         return Err(AppError::ValidationError(
-            "Validation Error".to_string(),
+            "Invalid characters".to_string(),
             Some(vec![ValidationDetail {
                 field: "username".to_string(),
                 message: "Invalid characters".to_string(),
@@ -48,52 +51,58 @@ pub fn validate_username(username: &str) -> Result<(), AppError> {
 
     // Check for reserved words
     let reserved_words = [
-        "admin", "root", "system", "superuser", "administrator", "god", 
-        "null", "undefined", "test", "demo"
+        "admin",
+        "root",
+        "system",
+        "superuser",
+        "administrator",
+        "god",
+        "null",
+        "undefined",
+        "test",
+        "demo",
     ];
-    
+
     if reserved_words.contains(&trimmed.to_lowercase().as_str()) {
-        return Err(AppError::Conflict(
-            "Reserved Username".to_string(),
-        )); 
+        return Err(AppError::Conflict("Reserved Username".to_string()));
     }
-    
+
     validate_no_xss(trimmed, "username")?;
-    
+
     Ok(())
 }
 
 /// Validates an email address.
 pub fn validate_email(email: &str) -> Result<(), AppError> {
     let trimmed = email.trim();
-    
+
     if !trimmed.contains('@') || !trimmed.contains('.') {
         return Err(AppError::ValidationError(
-            "Validation Error".to_string(),
+            "Invalid email format".to_string(),
             Some(vec![ValidationDetail {
                 field: "email".to_string(),
                 message: "Invalid email format".to_string(),
             }]),
         ));
     }
-    
+
     // Check @ comes before .
     if let Some(at_pos) = trimmed.find('@') {
         // Check there's content before @
         if at_pos == 0 {
-             return Err(AppError::ValidationError(
-                "Validation Error".to_string(),
+            return Err(AppError::ValidationError(
+                "Invalid email format".to_string(),
                 Some(vec![ValidationDetail {
                     field: "email".to_string(),
                     message: "Invalid email format".to_string(),
                 }]),
             ));
         }
-        
+
         if let Some(dot_pos) = trimmed.rfind('.') {
             if at_pos >= dot_pos {
-                 return Err(AppError::ValidationError(
-                    "Validation Error".to_string(),
+                return Err(AppError::ValidationError(
+                    "Invalid email format".to_string(),
                     Some(vec![ValidationDetail {
                         field: "email".to_string(),
                         message: "Invalid email format".to_string(),
@@ -102,40 +111,39 @@ pub fn validate_email(email: &str) -> Result<(), AppError> {
             }
         }
     }
-    
+
     Ok(())
 }
 
 /// Validates a password.
 pub fn validate_password(password: &str, field_name: &str) -> Result<(), AppError> {
     if password.len() < 6 {
-         return Err(AppError::ValidationError(
-            "Validation Error".to_string(),
+        return Err(AppError::ValidationError(
+            "Password too weak".to_string(),
             Some(vec![ValidationDetail {
                 field: field_name.to_string(),
                 message: "Password too weak".to_string(),
             }]),
         ));
     }
-    
+
     if password.len() > 128 {
-         return Err(AppError::ValidationError(
-            "Validation Error".to_string(),
-             Some(vec![ValidationDetail {
+        return Err(AppError::ValidationError(
+            "Password too long".to_string(),
+            Some(vec![ValidationDetail {
                 field: field_name.to_string(),
                 message: "Password too long".to_string(),
             }]),
         ));
     }
-    
+
     Ok(())
 }
-
 
 pub fn validate_no_xss(input: &str, field: &str) -> Result<(), AppError> {
     if input.contains('<') || input.contains('>') || input.contains("javascript:") {
         return Err(AppError::ValidationError(
-            "Validation Error".to_string(),
+            "Invalid characters".to_string(),
             Some(vec![ValidationDetail {
                 field: field.to_string(),
                 message: "Invalid characters".to_string(),
@@ -144,8 +152,6 @@ pub fn validate_no_xss(input: &str, field: &str) -> Result<(), AppError> {
     }
     Ok(())
 }
-
-
 
 #[cfg(test)]
 mod tests {

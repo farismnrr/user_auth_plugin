@@ -1,6 +1,5 @@
 use serde::Serialize;
 
-
 /// Standard error response structure for API endpoints.
 ///
 /// This DTO provides a consistent error response format across all API endpoints.
@@ -74,5 +73,3 @@ impl SuccessResponseDTO<()> {
         }
     }
 }
-
-

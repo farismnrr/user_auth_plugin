@@ -40,7 +40,7 @@ Register a new user account.
   ```json
   {
     "status": false,
-    "message": "Validation Error / Bad Request"
+    "message": "Invalid email format"
   }
   ```
   *(Status: 422 Unprocessable Entity)*
@@ -85,7 +85,7 @@ Register a new user account.
   ```json
   {
     "status": false,
-    "message": "Validation Error (Password too weak)"
+    "message": "Password too weak"
   }
   ```
   *(Status: 400 or 422)*
@@ -108,7 +108,7 @@ Register a new user account.
   ```json
   {
     "status": false,
-    "message": "Validation Error"
+    "message": "Invalid characters"
   }
   ```
   *(Status: 422)*
@@ -131,7 +131,7 @@ Register a new user account.
   ```json
   {
     "status": false,
-    "message": "Validation Error / Reserved Username"
+    "message": "Reserved Username"
   }
   ```
   *(Status: 400 or 409)*
@@ -177,7 +177,7 @@ Register a new user account.
   ```json
   {
     "status": false,
-    "message": "Validation Error",
+    "message": "Password too long",
     "details": [
       {
         "field": "password",
@@ -304,7 +304,7 @@ Register a new user account.
   ```json
   {
     "status": false,
-    "message": "Validation Error"
+    "message": "State parameter must be alphanumeric"
   }
   ```
   *(Status: 422)*
@@ -328,7 +328,7 @@ Register a new user account.
   ```json
   {
     "status": false,
-    "message": "Validation Error"
+    "message": "Nonce parameter too long (max 128 chars)"
   }
   ```
   *(Status: 422)*
@@ -352,7 +352,7 @@ Register a new user account.
   ```json
   {
     "status": false,
-    "message": "Validation Error"
+    "message": "Redirect URI contains invalid characters"
   }
   ```
   *(Status: 422)*
@@ -376,43 +376,22 @@ Register a new user account.
   ```json
   {
     "status": false,
-    "message": "Forbidden / not in allowed origins"
+    "message": "Redirect URI not in allowed origins"
   }
   ```
   *(Status: 403)*
 - **Side Effects**: None.
 
-### 17. Strict User Uniqueness (Cross-Tenant)
-- **Description**: Role 'user' MUST be unique globally across all tenants.
-- **Pre-conditions**: User exists in Tenant A.
-- **Request Body** (Tenant B):
+### 17. User Role Multi-Tenant SSO (Success)
+- **Description**: Role 'user' can register in multiple tenants with same credentials (Global SSO).
+- **Pre-conditions**: User with role 'user' exists in Tenant A.
+- **Request Body** (Tenant B with different API key):
   ```json
   {
-    "username": "<existing_username>",
-    "email": "<existing_email>",
-    "password": "StrongPassword123!",
-    "role": "user"
-  }
-  ```
-- **Expected Response**:
-  ```json
-  {
-    "status": false,
-    "message": "Email/Username already exists"
-  }
-  ```
-  *(Status: 409 Conflict)*
-
-### 18. Linked Admin Registration (Cross-Tenant - Success)
-- **Description**: Role 'admin' (or non-user) can register in new tenant if password matches existing account.
-- **Pre-conditions**: Admin exists in Tenant A. Correct password provided.
-- **Request Body** (Tenant B):
-  ```json
-  {
-    "username": "<existing_admin>",
-    "email": "<existing_email>",
+    "username": "<existing_user_username>",
+    "email": "<existing_user_email>",
     "password": "<CORRECT_PASSWORD>",
-    "role": "admin"
+    "role": "user"
   }
   ```
 - **Expected Response**:
@@ -420,21 +399,22 @@ Register a new user account.
   {
     "status": true,
     "message": "User registered successfully",
-    "data": { "user_id": "<EXISTING_UUID>" }
+    "data": { "user_id": "<SAME_UUID_AS_TENANT_A>" }
   }
   ```
   *(Status: 201 Created)*
-- **Side Effects**: User added to Tenant B with 'admin' role. Shared identity.
+- **Side Effects**: User linked to Tenant B with 'user' role. Shared identity across tenants.
+- **Verification**: Check `user_tenants` table has 2 entries for same user_id with different tenant_ids.
 
-### 19. Linked Admin Registration (Cross-Tenant - Password Mismatch)
-- **Description**: Role 'admin' registration fails if password does not match existing account.
-- **Pre-conditions**: Admin exists in Tenant A. Wrong password provided.
-- **Request Body** (Tenant B):
+### 18. Admin Role Cannot Share Credentials (Conflict)
+- **Description**: Role 'admin' (or non-user) CANNOT register in new tenant if credentials already exist.
+- **Pre-conditions**: Admin exists in Tenant A.
+- **Request Body** (Tenant B with different API key):
   ```json
   {
-    "username": "<existing_admin>",
-    "email": "<existing_email>",
-    "password": "<WRONG_PASSWORD>",
+    "username": "<existing_admin_username>",
+    "email": "<existing_admin_email>",
+    "password": "<ANY_PASSWORD>",
     "role": "admin"
   }
   ```
@@ -442,7 +422,32 @@ Register a new user account.
   ```json
   {
     "status": false,
-    "message": "Email/Username already exists"
+    "message": "Email already exists"
   }
   ```
   *(Status: 409 Conflict)*
+- **Side Effects**: None. Admin NOT added to Tenant B.
+- **Verification**: Check `user_tenants` table still has only 1 entry for this user.
+
+### 19. Cannot Mix User and Admin Roles (Conflict)
+- **Description**: Cannot register with 'admin' role if user already has 'user' role in another tenant (or vice versa).
+- **Pre-conditions**: User exists with role 'user' in Tenant A.
+- **Request Body** (Tenant B with different API key):
+  ```json
+  {
+    "username": "<existing_user_username>",
+    "email": "<existing_user_email>",
+    "password": "<CORRECT_PASSWORD>",
+    "role": "admin"
+  }
+  ```
+- **Expected Response**:
+  ```json
+  {
+    "status": false,
+    "message": "Cannot register as user - account exists with admin/non-user role"
+  }
+  ```
+  *(Status: 409 Conflict)*
+- **Side Effects**: None.
+- **Verification**: User remains with 'user' role only.

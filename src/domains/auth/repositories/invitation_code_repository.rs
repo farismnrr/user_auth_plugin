@@ -1,7 +1,4 @@
-use crate::domains::common::{
-    errors::AppError,
-    infrastructures::rocksdb_connection::RocksDbCache,
-};
+use crate::domains::common::{errors::AppError, infrastructures::rocksdb_connection::RocksDbCache};
 use async_trait::async_trait;
 use std::sync::Arc;
 use std::time::Duration;
@@ -33,7 +30,7 @@ impl InvitationCodeRepositoryTrait for InvitationCodeRepository {
 
     async fn validate_and_delete_code(&self, code: &str) -> Result<bool, AppError> {
         let key = format!("invite:{}", code);
-        
+
         // Check if exists
         let exists: Option<String> = self.cache.get(&key);
 

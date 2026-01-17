@@ -33,5 +33,3 @@ pub fn hash_token(token: &str) -> String {
     hasher.update(token.as_bytes());
     format!("{:x}", hasher.finalize())
 }
-
-

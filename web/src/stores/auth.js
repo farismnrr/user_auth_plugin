@@ -33,11 +33,13 @@ export const useAuthStore = defineStore('auth', () => {
             // Prepare SSO params
             const urlParams = new URLSearchParams(window.location.search)
             const redirectUri = urlParams.get('redirect_uri') || sessionStorage.getItem('sso_redirect_uri')
+            const role = urlParams.get('role') || sessionStorage.getItem('sso_role')
 
             const ssoParams = {
                 state: ssoState.value,
                 nonce: ssoNonce.value,
-                redirect_uri: redirectUri
+                redirect_uri: redirectUri,
+                role: role // Include role if present
             }
 
             const response = await AuthService.login(emailOrUsername, password, ssoParams)
@@ -54,7 +56,7 @@ export const useAuthStore = defineStore('auth', () => {
                         user.value = verifyResponse.data.user
                     }
                 } catch {
-                    // console.error("Failed to fetch user details:", e)
+
                     // Optional: handle error, maybe logout if verify fails?
                 }
 
@@ -68,7 +70,7 @@ export const useAuthStore = defineStore('auth', () => {
                     // Validate redirect_uri against whitelist using our utility
                     // We also ensure it's a valid URL and has safe protocol
                     if (!isValidRedirectUri(redirectUri)) {
-                        console.warn('[SSO Security] Blocked invalid redirect_uri:', redirectUri)
+
                         sessionStorage.removeItem('sso_redirect_uri')
                         sessionStorage.removeItem('sso_tenant_id')
                         ssoState.value = null
@@ -95,10 +97,10 @@ export const useAuthStore = defineStore('auth', () => {
                         url.hash = `access_token=${safeToken}&state=${safeState}`
 
                         // Perform the redirect using the validated URL object
-                        window.location.href = url.toString()
+                        window.location.href = url.toString() 
                         return
                     } catch (e) {
-                        console.error('Invalid redirect URL construction:', e)
+
                         router.push({ name: 'forbidden' })
                         return
                     }
@@ -108,7 +110,7 @@ export const useAuthStore = defineStore('auth', () => {
                 toast.success('Login successful! You can close this window.')
             }
         } catch (err) {
-            // console.error(err)
+
             const { message, type } = parseError(err)
 
             if (type === ERROR_TYPES.CREDENTIAL) {
@@ -152,7 +154,7 @@ export const useAuthStore = defineStore('auth', () => {
                 router.push('/login')
             }
         } catch (err) {
-            // console.error(err)
+
             const { message, type } = parseError(err)
 
             if (type === ERROR_TYPES.CREDENTIAL) {
@@ -174,7 +176,7 @@ export const useAuthStore = defineStore('auth', () => {
                 await AuthService.logout(accessToken.value)
             }
         } catch {
-            // console.error("Logout error", err)
+
         } finally {
             user.value = null
             accessToken.value = null
@@ -193,7 +195,7 @@ export const useAuthStore = defineStore('auth', () => {
                 // Note: user info might need to be fetched if not in refresh response
             }
         } catch {
-            // console.log("No valid session found or refresh failed.")
+
         } finally {
             loading.value = false
             isInitialized.value = true

@@ -1,13 +1,13 @@
+use crate::domains::common::errors::AppError;
+use crate::domains::common::infrastructures::rocksdb_connection::RocksDbCache;
+use crate::domains::common::utils::password;
 use crate::domains::user::dtos::user_dto::{CreateUserRequest, UpdateUserRequest};
 use crate::domains::user::entities::user::{Entity as UserEntity, Model as User};
-use crate::domains::common::errors::AppError;
-use crate::domains::common::utils::password;
 use async_trait::async_trait;
 use sea_orm::*;
 use std::sync::Arc;
-use uuid::Uuid;
-use crate::domains::common::infrastructures::rocksdb_connection::RocksDbCache;
 use std::time::Duration;
+use uuid::Uuid;
 
 /// Trait defining user repository operations.
 ///
@@ -17,19 +17,19 @@ use std::time::Duration;
 pub trait UserRepositoryTrait: Send + Sync {
     /// Creates a new user in the database.
     async fn create(&self, user: CreateUserRequest) -> Result<User, AppError>;
-    
+
     /// Finds a user by their ID.
     async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, AppError>;
-    
+
     /// Finds a user by their username.
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError>;
-    
+
     /// Retrieves all users from the database.
     async fn find_all(&self) -> Result<Vec<User>, AppError>;
-    
+
     /// Updates an existing user.
     async fn update(&self, id: Uuid, user: UpdateUserRequest) -> Result<User, AppError>;
-    
+
     /// Deletes a user by their ID.
     async fn delete(&self, id: Uuid) -> Result<(), AppError>;
 
@@ -37,7 +37,8 @@ pub trait UserRepositoryTrait: Send + Sync {
     async fn find_by_email_with_deleted(&self, email: &str) -> Result<Option<User>, AppError>;
 
     /// Finds a user by username, including soft-deleted ones.
-    async fn find_by_username_with_deleted(&self, username: &str) -> Result<Option<User>, AppError>;
+    async fn find_by_username_with_deleted(&self, username: &str)
+        -> Result<Option<User>, AppError>;
 
     /// Restores a soft-deleted user.
     async fn restore(&self, id: Uuid, req: CreateUserRequest) -> Result<User, AppError>;
@@ -68,14 +69,13 @@ impl UserRepositoryTrait for UserRepository {
         let password_hash = password::hash_password(&req.password)?;
 
         let user = crate::domains::user::entities::user::ActiveModel {
-            id: Set(Uuid::new_v4()),  // Generate UUID in repository
+            id: Set(Uuid::new_v4()), // Generate UUID in repository
             username: Set(req.username.clone()),
             email: Set(req.email.clone()),
             password_hash: Set(password_hash),
-            created_at: Set(chrono::Utc::now().into()),
-            updated_at: Set(chrono::Utc::now().into()),
+            created_at: Set(chrono::Utc::now()),
+            updated_at: Set(chrono::Utc::now()),
             deleted_at: Set(None),
-            ..Default::default()
         };
 
         let result = UserEntity::insert(user.clone()).exec(&*self.db).await;
@@ -123,13 +123,11 @@ impl UserRepositoryTrait for UserRepository {
         Ok(user)
     }
 
-
-
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
         let cache_key = format!("user:username:{}", username);
         if let Some(cached_user) = self.cache.get::<User>(&cache_key) {
-             log::info!("CACHE HIT: {}", cache_key);
-             return Ok(Some(cached_user));
+            log::info!("CACHE HIT: {}", cache_key);
+            return Ok(Some(cached_user));
         }
 
         let user = UserEntity::find()
@@ -140,11 +138,11 @@ impl UserRepositoryTrait for UserRepository {
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         if let Some(ref u) = user {
-             let ttl_secs = std::env::var("CACHE_TTL")
+            let ttl_secs = std::env::var("CACHE_TTL")
                 .unwrap_or_else(|_| "3600".to_string())
                 .parse::<u64>()
                 .unwrap_or(3600);
-             self.cache.set(&cache_key, u, Duration::from_secs(ttl_secs));
+            self.cache.set(&cache_key, u, Duration::from_secs(ttl_secs));
         }
 
         Ok(user)
@@ -167,7 +165,8 @@ impl UserRepositoryTrait for UserRepository {
             return Err(AppError::NotFound("User not found".to_string()));
         }
 
-        let mut user: crate::domains::user::entities::user::ActiveModel = existing.clone().unwrap().into();
+        let mut user: crate::domains::user::entities::user::ActiveModel =
+            existing.clone().unwrap().into();
 
         if let Some(ref username) = req.username {
             user.username = Set(username.clone());
@@ -180,13 +179,12 @@ impl UserRepositoryTrait for UserRepository {
             user.password_hash = Set(password_hash);
         }
 
-
         user.updated_at = Set(chrono::Utc::now());
 
         let result = user.update(&*self.db).await;
 
         if let Err(e) = result {
-             match e {
+            match e {
                 DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(db_err)))
                 | DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) => {
                     let msg = db_err.message().to_lowercase();
@@ -205,18 +203,20 @@ impl UserRepositoryTrait for UserRepository {
 
         // Invalidate cache
         self.cache.del(&format!("user:{}", id));
-        // We might not know the old username easily without another DB call if it wasn't in cache or existing, 
-        // but typically user update changes are critical enough. 
+        // We might not know the old username easily without another DB call if it wasn't in cache or existing,
+        // but typically user update changes are critical enough.
         // For stricter consistency, we could invalidate the username key if we knew it.
         // For now, at least ID cache is cleared.
         // Also if username was changed, invalidate old username key is tricky without previous value.
         // Since we loaded 'existing' earlier, we can use it.
         // Let's invalidate 'existing' username too.
         if let Some(old_user) = existing {
-             self.cache.del(&format!("user:username:{}", old_user.username));
+            self.cache
+                .del(&format!("user:username:{}", old_user.username));
         }
         // Also invalidate new username just in case.
-        self.cache.del(&format!("user:username:{}", result.username));
+        self.cache
+            .del(&format!("user:username:{}", result.username));
 
         Ok(result)
     }
@@ -234,12 +234,13 @@ impl UserRepositoryTrait for UserRepository {
 
         log::info!("Soft deleting user...");
 
-        let res = user.update(&*self.db)
+        let res = user
+            .update(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 
         log::info!("Soft delete successful. DeletedAt: {:?}", res.deleted_at);
-        
+
         // Invalidate cache
         self.cache.del(&format!("user:{}", id));
         self.cache.del(&format!("user:username:{}", res.username)); // Invalidate username cache too
@@ -253,7 +254,7 @@ impl UserRepositoryTrait for UserRepository {
             .one(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
-        
+
         if let Some(u) = &user {
             log::debug!("FOUND user by email (inc deleted) [REDACTED] -> {}", u.id);
             return Ok(user);
@@ -263,7 +264,10 @@ impl UserRepositoryTrait for UserRepository {
         Ok(user)
     }
 
-    async fn find_by_username_with_deleted(&self, username: &str) -> Result<Option<User>, AppError> {
+    async fn find_by_username_with_deleted(
+        &self,
+        username: &str,
+    ) -> Result<Option<User>, AppError> {
         let user = UserEntity::find()
             .filter(crate::domains::user::entities::user::Column::Username.eq(username))
             .one(&*self.db)
@@ -292,7 +296,8 @@ impl UserRepositoryTrait for UserRepository {
         user.deleted_at = Set(None);
         user.updated_at = Set(chrono::Utc::now());
 
-        let result = user.update(&*self.db)
+        let result = user
+            .update(&*self.db)
             .await
             .map_err(|e| AppError::DatabaseError(e.to_string()))?;
 

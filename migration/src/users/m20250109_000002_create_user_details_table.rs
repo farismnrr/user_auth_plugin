@@ -41,16 +41,8 @@ impl MigrationTrait for Migration {
                             .string_len(20)
                             .null(),
                     )
-                    .col(
-                        ColumnDef::new(UserDetails::Address)
-                            .text()
-                            .null(),
-                    )
-                    .col(
-                        ColumnDef::new(UserDetails::DateOfBirth)
-                            .date()
-                            .null(),
-                    )
+                    .col(ColumnDef::new(UserDetails::Address).text().null())
+                    .col(ColumnDef::new(UserDetails::DateOfBirth).date().null())
                     .col(
                         ColumnDef::new(UserDetails::ProfilePictureUrl)
                             .string()

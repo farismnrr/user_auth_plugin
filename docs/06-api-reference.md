@@ -74,7 +74,8 @@ Content-Type: application/json
     "status": true,
     "message": "Tenant created successfully",
     "data": {
-        "tenant_id": "uuid-here"
+        "tenant_id": "uuid-here",
+        "api_key": "your-tenant-api-key"
     }
 }
 ```
@@ -167,7 +168,8 @@ Content-Type: application/json
 
 {
     "email_or_username": "john@example.com",
-    "password": "StrongPassword123!"
+    "password": "StrongPassword123!",
+    "role": "user" // Optional: Enforces RBAC check. Returns 404 if mismatch.
 }
 ```
 

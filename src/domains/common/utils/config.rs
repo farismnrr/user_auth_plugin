@@ -16,6 +16,7 @@ pub struct Config {
     pub api_key: String,
     pub tenant_secret_key: String,
     pub secret_key: String,
+    pub jwt_secret: String,
 
     // Server
     pub server_host: String,
@@ -54,6 +55,7 @@ impl Config {
             let tenant_secret_key = env::var("TENANT_SECRET_KEY")
                 .expect("TENANT_SECRET_KEY must be set in environment");
             let secret_key = env::var("SECRET_KEY").expect("SECRET_KEY must be set in environment");
+            let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set in environment");
 
             // Server - REQUIRED
             let server_host =
@@ -122,6 +124,7 @@ impl Config {
                 api_key,
                 tenant_secret_key,
                 secret_key,
+                jwt_secret,
                 server_host,
                 server_port,
                 endpoint,

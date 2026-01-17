@@ -58,6 +58,21 @@ Upon successful authentication, the SSO service generates a JWT access token con
 - User role
 - Token expiration time
 
+### Multi-Tenant Access Model
+
+The service enforces strict role-based access rules:
+
+1. **Global SSO (Role: `user`)**:
+   - A generic `user` account can access multiple tenants.
+   - Credentials (email/password) are shared across tenants (Single Sign-On).
+   - When a user logs into a new tenant, they are automatically linked to that tenant.
+
+2. **Tenant-Scoped Access (Role: `admin`, `supplier`, etc.)**:
+   - Roles other than `user` are strictly scoped to a single tenant.
+   - An `admin` in Tenant A cannot access Tenant B with the same account.
+   - Separate accounts (different emails/usernames) are required for admin access to different tenants.
+   - Attempts to register/link a non-user role to an existing account will result in a **409 Conflict**.
+
 ### Step 4: Redirect Back
 
 The SSO service redirects the user back to your application with the access token in the URL hash fragment:

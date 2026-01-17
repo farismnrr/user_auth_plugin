@@ -44,7 +44,7 @@ router.beforeEach(async (to, from, next) => {
         // Validate redirect_uri against whitelist
         if (redirectUri && !isValidRedirectUri(redirectUri)) {
             // Invalid redirect_uri - redirect to forbidden page
-            console.warn('[SSO Security] Blocked invalid redirect_uri:', redirectUri)
+
             return next({ name: 'forbidden' })
         }
 
@@ -80,8 +80,9 @@ router.beforeEach(async (to, from, next) => {
                 const safeState = encodeURIComponent(state)
                 url.hash = `access_token=${safeToken}&state=${safeState}`
                 window.location.href = url.toString()
+                return
             } catch (e) {
-                console.error('Invalid redirect URL construction:', e)
+
                 next({ name: 'forbidden' })
             }
         }

@@ -1,3 +1,6 @@
+#![allow(clippy::empty_line_after_doc_comments)]
+#![allow(clippy::doc_lazy_continuation)]
+#![allow(clippy::collapsible_match)]
 //! User Auth Plugin Library Crate
 //!
 //! This library exports all core modules for testing and external integration.
@@ -12,4 +15,3 @@
 
 pub mod domains;
 pub mod server;
-

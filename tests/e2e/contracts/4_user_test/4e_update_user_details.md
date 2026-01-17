@@ -33,12 +33,12 @@ Update current user's extended details.
   }
   ```
 - **Expected Response**:
-  - 422 Validation Error (Preferred)
+  - 422 Validation Failed
   - Details:
     ```json
     {
       "status": false,
-      "message": "Validation Error",
+      "message": "Invalid characters",
       "details": [
         { "field": "first_name", "message": "Invalid characters" },
         { "field": "address", "message": "Invalid characters" }
@@ -60,12 +60,12 @@ Update current user's extended details.
   ```
 - **Expected Response**:
   - 200 OK (Data treated as literal string)
-  - OR 422 Validation Error.
+  - OR 422.
   - Details:
     ```json
     {
       "status": false,
-      "message": "Validation Error",
+      "message": "Invalid characters",
       "details": [{ "field": "last_name", "message": "Invalid characters" }]
     }
     ```
@@ -81,10 +81,10 @@ Update current user's extended details.
   { "address": "<10MB_of_text>" }
   ```
 - **Expected Response**:
-  - 413 Payload Too Large or 422 Validation Error.
+  - 413 Payload Too Large or 422.
   - If 422:
     ```json
-    { "status": false, "message": "Validation Error", "details": [{"field":"address","message":"Too long"}] }
+    { "status": false, "message": "Too long", "details": [{"field":"address","message":"Too long"}] }
     ```
 - **Side Effects**: None.
 
@@ -100,7 +100,7 @@ Update current user's extended details.
   ```json
   {
     "status": false,
-    "message": "Validation Error",
+    "message": "Invalid phone format",
     "details": [
       {
         "field": "phone",

@@ -24,11 +24,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .primary_key(),
                     )
-                    .col(
-                        ColumnDef::new(UserSessions::UserId)
-                            .uuid()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(UserSessions::UserId).uuid().not_null())
                     .col(
                         ColumnDef::new(UserSessions::RefreshTokenHash)
                             .string()
