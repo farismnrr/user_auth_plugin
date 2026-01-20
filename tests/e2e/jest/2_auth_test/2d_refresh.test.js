@@ -38,7 +38,7 @@ describe("POST /auth/refresh - Refresh Token", () => {
   // 1. Refresh without token cookie
   test("Scenario 1: Refresh without token cookie", async () => {
     try {
-      await axios.post(`${BASE_URL}/auth/refresh`, {
+      await axios.post(`${BASE_URL}/auth/refresh`, {}, {
         headers: { "X-API-Key": API_KEY },
         // No Cookie
       });
@@ -57,7 +57,7 @@ describe("POST /auth/refresh - Refresh Token", () => {
   // 2. Refresh with invalid token
   test("Scenario 2: Refresh with invalid token", async () => {
     try {
-      await axios.post(`${BASE_URL}/auth/refresh`, {
+      await axios.post(`${BASE_URL}/auth/refresh`, {}, {
         headers: {
           "X-API-Key": API_KEY,
           Cookie: "refresh_token=invalid_jwt_token_string",
@@ -92,7 +92,7 @@ describe("POST /auth/refresh - Refresh Token", () => {
     const expiredToken = jwt.sign({ ...payload, exp: Math.floor(Date.now() / 1000) - 7202 }, JWT_SECRET);
 
     try {
-      await axios.post(`${BASE_URL}/auth/refresh`, {
+      await axios.post(`${BASE_URL}/auth/refresh`, {}, {
         headers: {
           "X-API-Key": API_KEY,
           Cookie: `refresh_token=${expiredToken}`,
@@ -125,7 +125,7 @@ describe("POST /auth/refresh - Refresh Token", () => {
     const forgedToken = jwt.sign({ ...payload, exp: Math.floor(Date.now() / 1000) + 3600 }, fakeTenantSecret);
 
     try {
-      await axios.post(`${BASE_URL}/auth/refresh`, {
+      await axios.post(`${BASE_URL}/auth/refresh`, {}, {
         headers: {
           "X-API-Key": API_KEY,
           Cookie: `refresh_token=${forgedToken}`,
@@ -184,12 +184,12 @@ describe("POST /auth/refresh - Refresh Token", () => {
       reuseCookie = reuseRawCookie.split(";")[0];
 
       // 2. Consume it once (Success)
-      await axios.post(`${BASE_URL}/auth/refresh`, {
+      await axios.post(`${BASE_URL}/auth/refresh`, {}, {
         headers: { "X-API-Key": API_KEY, Cookie: reuseCookie },
       });
 
       // 3. Consume again (Reuse detection)
-      await axios.post(`${BASE_URL}/auth/refresh`, {
+      await axios.post(`${BASE_URL}/auth/refresh`, {}, {
         headers: { "X-API-Key": API_KEY, Cookie: reuseCookie },
       });
 
@@ -233,7 +233,7 @@ describe("POST /auth/refresh - Refresh Token", () => {
       });
 
       // Try refresh
-      await axios.post(`${BASE_URL}/auth/refresh`, { headers: { "X-API-Key": API_KEY, Cookie: c } });
+      await axios.post(`${BASE_URL}/auth/refresh`, {}, { headers: { "X-API-Key": API_KEY, Cookie: c } });
 
       throw new Error("Should have failed");
     } catch (error) {
@@ -249,7 +249,7 @@ describe("POST /auth/refresh - Refresh Token", () => {
 
   // 7. Successful token refresh
   test("Scenario 7: Successful token refresh", async () => {
-    const response = await axios.post(`${BASE_URL}/auth/refresh`, {
+    const response = await axios.post(`${BASE_URL}/auth/refresh`, {}, {
       headers: {
         "X-API-Key": API_KEY,
         Cookie: refreshCookie,
