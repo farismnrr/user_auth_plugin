@@ -34,7 +34,7 @@ fn test_generate_and_validate_refresh_token() {
     let role = "admin".to_string();
 
     let token = jwt_service
-        .generate_refresh_token(user_id, tenant_id, role.clone())
+        .generate_refresh_token(user_id, tenant_id, role.clone(), None)
         .unwrap();
     let claims = jwt_service.validate_token(&token).unwrap();
 

@@ -98,7 +98,7 @@ mod tests {
         pub UserSessionRepository {}
         #[async_trait]
         impl UserSessionRepositoryTrait for UserSessionRepository {
-            async fn create_session(&self, user_id: Uuid, refresh_token_hash: String, user_agent: Option<String>, ip_address: Option<String>, expires_at: DateTime<Utc>) -> Result<UserSession, AppError>;
+            async fn create_session(&self, id: Option<Uuid>, user_id: Uuid, refresh_token_hash: String, user_agent: Option<String>, ip_address: Option<String>, expires_at: DateTime<Utc>) -> Result<UserSession, AppError>;
             async fn find_by_refresh_token_hash(&self, hash: &str) -> Result<Option<UserSession>, AppError>;
             async fn delete_session(&self, id: Uuid) -> Result<(), AppError>;
             async fn delete_all_sessions_for_user(&self, user_id: Uuid) -> Result<(), AppError>;
@@ -167,7 +167,7 @@ mod tests {
 
         mock_session_repo
             .expect_create_session()
-            .returning(|_, _, _, _, _| {
+            .returning(|_, _, _, _, _, _| {
                 Ok(UserSession {
                     id: Uuid::new_v4(),
                     user_id: Uuid::new_v4(),
@@ -600,7 +600,7 @@ mod tests {
         // Setup session mock for login (register logs user in)
         mock_session_repo
             .expect_create_session()
-            .returning(|_, _, _, _, _| {
+            .returning(|_, _, _, _, _, _| {
                  Ok(UserSession {
                     id: Uuid::new_v4(),
                     user_id: Uuid::new_v4(),
@@ -865,7 +865,7 @@ mod tests {
 
         mock_session_repo
             .expect_create_session()
-            .returning(|_, _, _, _, _| {
+            .returning(|_, _, _, _, _, _| {
                  Ok(UserSession {
                     id: Uuid::new_v4(),
                     user_id: Uuid::new_v4(),
@@ -1104,7 +1104,7 @@ mod tests {
 
         mock_session_repo
             .expect_create_session()
-            .returning(|_, _, _, _, _| {
+            .returning(|_, _, _, _, _, _| {
                  Ok(UserSession {
                     id: Uuid::new_v4(), user_id: Uuid::new_v4(), refresh_token_hash: "hash".to_string(),
                     user_agent: None, ip_address: None, expires_at: Utc::now().into(), created_at: Utc::now().into(),
@@ -1336,7 +1336,7 @@ mod tests {
 
         mock_session_repo
             .expect_create_session()
-            .returning(|_, _, _, _, _| {
+            .returning(|_, _, _, _, _, _| {
                 Ok(UserSession {
                     id: Uuid::new_v4(), user_id: Uuid::new_v4(), refresh_token_hash: "hash".to_string(),
                     user_agent: None, ip_address: None, expires_at: Utc::now().into(), created_at: Utc::now().into(),
