@@ -90,7 +90,35 @@ export async function GET(req: NextRequest) {
 }
 ```
 
-### 2. Login Page
+```
+
+### 3. Logout Proxy Route
+Create `src/app/api/auth/logout/route.ts` to handle logout securely:
+
+```typescript
+import { type NextRequest, NextResponse } from "next/server";
+
+export async function POST(req: NextRequest) {
+  try {
+    const authHeader = req.headers.get("Authorization");
+    // Call backend/SSO logout endpoint
+    const ssoUrl = process.env.SSO_URL || "http://localhost:5500";
+    const response = await fetch(`${ssoUrl}/auth/logout`, {
+      method: "POST",
+      headers: { 
+          Authorization: authHeader || "",
+          "X-API-Key": process.env.NEXT_PUBLIC_API_KEY || ""
+      },
+    });
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    return NextResponse.json({ message: "Logout failed" }, { status: 500 });
+  }
+}
+```
+
+### 4. Login Page
 
 Create `src/app/auth/login/page.tsx`:
 

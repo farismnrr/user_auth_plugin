@@ -242,7 +242,7 @@ Authorization: Bearer {access_token}
             "id": "uuid-here",
             "username": "johndoe",
             "email": "john@example.com",
-            "role": "user",
+            "role": "admin", // Dynamic role based on tenant context
             "tenant_id": "tenant-uuid"
         }
     }
@@ -252,7 +252,7 @@ Authorization: Bearer {access_token}
 ### Logout
 
 ```http
-DELETE /auth/logout
+POST /auth/logout
 X-API-Key: your-api-key
 Authorization: Bearer {access_token}
 ```
