@@ -45,7 +45,7 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
             .service(
                 web::resource("/refresh")
                     .wrap(ApiKeyMiddleware)
-                    .route(web::get().to(refresh))
+                    .route(web::post().to(refresh))
             )
             // Internal routes (TenantSecret Protected)
             .service(
