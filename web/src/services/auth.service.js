@@ -31,7 +31,7 @@ class AuthService {
   }
 
   async refresh() {
-    const response = await api.get("/auth/refresh");
+    const response = await api.post("/auth/refresh");
     return response.data;
   }
 
