@@ -54,10 +54,10 @@ log = "0.4.29"
 env_logger = "0.11.8"
 
 # JWT authentication
-jsonwebtoken = "9"
+jsonwebtoken = "10"
 
 rocksdb = "0.24.0"
-rand = "0.8"
+rand = "0.9"
 
 # URL parsing for SSO redirect validation
 url = "2"
