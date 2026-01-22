@@ -105,7 +105,8 @@ async fn test_auth_middleware_validator_expired_token() {
         &Header::default(),
         &claims,
         &EncodingKey::from_secret(config.jwt_secret.as_bytes()),
-    ).unwrap();
+    )
+    .unwrap();
 
     let req = test::TestRequest::default()
         .insert_header((http::header::AUTHORIZATION, format!("Bearer {}", token)))
@@ -125,7 +126,7 @@ async fn test_auth_middleware_validator_expired_token() {
     // 5. Verify error response
     let resp = err.error_response();
     assert_eq!(resp.status(), http::StatusCode::UNAUTHORIZED);
-    
+
     // Check body message for "Token expired"
     let body_bytes = actix_web::body::to_bytes(resp.into_body()).await.unwrap();
     let body_str = std::str::from_utf8(&body_bytes).unwrap();

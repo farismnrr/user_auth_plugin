@@ -114,7 +114,8 @@ impl UserTenantRepositoryTrait for UserTenantRepository {
                 .unwrap_or_else(|_| "3600".to_string())
                 .parse::<u64>()
                 .unwrap_or(3600);
-            self.cache.set(&cache_key, &roles, Duration::from_secs(ttl_secs));
+            self.cache
+                .set(&cache_key, &roles, Duration::from_secs(ttl_secs));
         }
 
         Ok(roles)

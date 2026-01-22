@@ -71,7 +71,6 @@ where
             .map(str::trim)
             .unwrap_or("");
 
-
         // Check if TENANT_SECRET_KEY is configured
         if expected_key.is_empty() {
             let res = HttpResponse::InternalServerError()

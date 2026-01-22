@@ -1,6 +1,7 @@
 use crate::domains::auth::usecases::auth_usecase::AuthUseCase;
 use crate::domains::common::dtos::response_dto::SuccessResponseDTO;
 use crate::domains::common::errors::AppError;
+use crate::domains::common::utils::jwt::Claims;
 use crate::domains::common::validators::sso_validator::{
     validate_redirect_uri_whitelist, validate_sso_params,
 };
@@ -12,7 +13,6 @@ use actix_web::{
     cookie::{Cookie, SameSite},
     web, HttpMessage, HttpResponse, Responder,
 };
-use crate::domains::common::utils::jwt::Claims;
 use std::sync::Arc;
 
 /// Register a new user
@@ -235,14 +235,13 @@ pub async fn refresh(
 ) -> Result<impl Responder, AppError> {
     let (new_access_token, expires_in) = usecase.refresh_token_from_request(&req).await?;
 
-    Ok(HttpResponse::Ok()
-        .json(SuccessResponseDTO::new(
-            "Token refreshed successfully",
-            serde_json::json!({
-                "access_token": new_access_token,
-                "expires_in": expires_in
-            }),
-        )))
+    Ok(HttpResponse::Ok().json(SuccessResponseDTO::new(
+        "Token refreshed successfully",
+        serde_json::json!({
+            "access_token": new_access_token,
+            "expires_in": expires_in
+        }),
+    )))
 }
 
 /// Verifies JWT token and returns user data if valid.

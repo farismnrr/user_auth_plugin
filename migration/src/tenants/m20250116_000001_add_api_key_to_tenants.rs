@@ -11,7 +11,7 @@ impl MigrationTrait for Migration {
                 Table::alter()
                     .table(Tenants::Table)
                     .add_column(
-                ColumnDef::new(Tenants::ApiKey)
+                        ColumnDef::new(Tenants::ApiKey)
                             .string()
                             .string_len(255)
                             .null(),
@@ -34,7 +34,7 @@ impl MigrationTrait for Migration {
         // Generate and set keys for existing tenants if any
         // ... handled in repository/app logic or manual sql if needed
         // For now just allow null and we will populate on start or manually.
-        
+
         Ok(())
     }
 

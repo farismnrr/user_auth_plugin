@@ -136,7 +136,11 @@ impl AuthUseCase {
         let normalized_email = req.email.to_lowercase();
 
         let mut conflict_reason = "Email already exists";
-        let existing_user_option = if let Some(u) = self.repository.find_by_email_with_deleted(&normalized_email).await? {
+        let existing_user_option = if let Some(u) = self
+            .repository
+            .find_by_email_with_deleted(&normalized_email)
+            .await?
+        {
             Some(u)
         } else if let Some(u) = self.repository.find_by_username(&req.username).await? {
             conflict_reason = "Username already exists";
@@ -147,48 +151,61 @@ impl AuthUseCase {
 
         // EARLY RETURN: New User Creation
         let Some(existing_user) = existing_user_option else {
-             let (user, _) = self.create_new_user(&req, &normalized_email).await?;
-             
-             // Link to tenant
-             self.user_tenant_repository.add_user_to_tenant(user.id, req.tenant_id, req.role.clone()).await?;
-             
-             // Generate tokens
-             let role = req.role.clone();
-             let access_token = self.jwt_service.generate_access_token(user.id, req.tenant_id, role.clone())
-                 .map_err(|e| AppError::InternalError(format!("Failed to generate access token: {}", e)))?;
-             
-             let expires_in = self.jwt_service.get_access_token_expiry();
-             self.log_activity_success(Some(user.id), "register", ip_address, user_agent).await;
-             
-             return Ok(AuthResponse { 
-                 user_id: user.id, 
-                 access_token,
-                 expires_in,
-             });
+            let (user, _) = self.create_new_user(&req, &normalized_email).await?;
+
+            // Link to tenant
+            self.user_tenant_repository
+                .add_user_to_tenant(user.id, req.tenant_id, req.role.clone())
+                .await?;
+
+            // Generate tokens
+            let role = req.role.clone();
+            let access_token = self
+                .jwt_service
+                .generate_access_token(user.id, req.tenant_id, role.clone())
+                .map_err(|e| {
+                    AppError::InternalError(format!("Failed to generate access token: {}", e))
+                })?;
+
+            let expires_in = self.jwt_service.get_access_token_expiry();
+            self.log_activity_success(Some(user.id), "register", ip_address, user_agent)
+                .await;
+
+            return Ok(AuthResponse {
+                user_id: user.id,
+                access_token,
+                expires_in,
+            });
         };
 
         // Step 2: Existing User Validation
-        
+
         // If the user was found by username but the email doesn't match, this is a conflict.
         // We only allow linking if the email matches (identity anchor).
         if existing_user.email != normalized_email {
             let err = AppError::Conflict(conflict_reason.to_string());
-            self.log_activity_failure(None, "register", &err, ip_address, user_agent).await;
+            self.log_activity_failure(None, "register", &err, ip_address, user_agent)
+                .await;
             return Err(err);
         }
 
-        let (user, _is_restored) = self.validate_existing_user_for_registration(
-            existing_user,
-            &req,
-            &normalized_email,
-            conflict_reason,
-            ip_address.clone(),
-            user_agent.clone()
-        ).await?;
+        let (user, _is_restored) = self
+            .validate_existing_user_for_registration(
+                existing_user,
+                &req,
+                &normalized_email,
+                conflict_reason,
+                ip_address.clone(),
+                user_agent.clone(),
+            )
+            .await?;
 
         // Step 3: Check if user is already assigned to this tenant with the REQUESTED role
-        let existing_roles = self.user_tenant_repository.get_user_roles_in_tenant(user.id, req.tenant_id).await?;
-        
+        let existing_roles = self
+            .user_tenant_repository
+            .get_user_roles_in_tenant(user.id, req.tenant_id)
+            .await?;
+
         let role = if existing_roles.contains(&req.role) {
             // "Signup as Login": User already has THIS role in this tenant
             req.role.clone()
@@ -311,9 +328,11 @@ impl AuthUseCase {
             .user_tenant_repository
             .get_user_roles_in_tenant(user.id, req.tenant_id)
             .await?;
-            
+
         if roles.is_empty() {
-             return Err(AppError::Unauthorized("User not authorized for this tenant".to_string()));
+            return Err(AppError::Unauthorized(
+                "User not authorized for this tenant".to_string(),
+            ));
         }
 
         // Determine which role to use for the token
@@ -321,14 +340,21 @@ impl AuthUseCase {
             if !roles.contains(requested_role) {
                 // User explicitly requested "NotFound" behavior to mimic non-existence in that role scope
                 let err = AppError::NotFound("User not found".to_string());
-                self.log_activity_failure(Some(user.id), "login_role_mismatch", &err, ip_address, user_agent)
-                    .await;
+                self.log_activity_failure(
+                    Some(user.id),
+                    "login_role_mismatch",
+                    &err,
+                    ip_address,
+                    user_agent,
+                )
+                .await;
                 return Err(err);
             }
             requested_role.clone()
         } else {
             // No role requested, pick the first one (usually 'user' if it exists, otherwise first in list)
-            roles.iter()
+            roles
+                .iter()
                 .find(|r| *r == "user")
                 .cloned()
                 .unwrap_or_else(|| roles[0].clone())
@@ -746,8 +772,9 @@ impl AuthUseCase {
             .await?;
 
         // Parse tenant ID
-        let tenant_id = uuid::Uuid::parse_str(&tenant_id_str)
-            .map_err(|_| AppError::ValidationError("Invalid tenant ID in token".to_string(), None))?;
+        let tenant_id = uuid::Uuid::parse_str(&tenant_id_str).map_err(|_| {
+            AppError::ValidationError("Invalid tenant ID in token".to_string(), None)
+        })?;
 
         // Fetch role from DB for this tenant
         // Priority: DB Role > "user"
@@ -848,7 +875,6 @@ impl AuthUseCase {
         Ok(code)
     }
 
-
     /// Validates an existing user for linking and checks for role-based conflicts.
     async fn validate_existing_user_for_registration(
         &self,
@@ -867,16 +893,26 @@ impl AuthUseCase {
                 email: normalized_email.to_string(),
                 password: req.password.clone(),
             };
-            let restored_user = self.repository.restore(existing_user.id, create_req).await?;
+            let restored_user = self
+                .repository
+                .restore(existing_user.id, create_req)
+                .await?;
             return Ok((restored_user, true));
         }
 
         // Active User Validation
-        
+
         // Verify password for linkage security (prevent account hijacking)
         if !password::verify_password(&req.password, &existing_user.password_hash)? {
             let err = AppError::Conflict("Invalid credentials for account linking".to_string());
-            self.log_activity_failure(Some(existing_user.id), "register", &err, ip_address, user_agent).await;
+            self.log_activity_failure(
+                Some(existing_user.id),
+                "register",
+                &err,
+                ip_address,
+                user_agent,
+            )
+            .await;
             return Err(err);
         }
 

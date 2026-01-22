@@ -61,7 +61,11 @@ impl TenantUseCase {
             ));
         }
 
-        if !req.name.chars().all(|c| c.is_ascii_alphanumeric() || c == ' ' || c == '_' || c == '-') {
+        if !req
+            .name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == ' ' || c == '_' || c == '-')
+        {
             return Err(AppError::ValidationError(
                 "Invalid characters in name".to_string(),
                 Some(vec![ValidationDetail {

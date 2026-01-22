@@ -64,7 +64,10 @@ impl TenantRepositoryTrait for TenantRepository {
             id: Set(Uuid::new_v4()), // Generate UUID in repository
             name: Set(req.name.clone()),
             description: Set(req.description.clone()),
-            api_key: Set(Some(uuid::Uuid::new_v4().to_string().replace("-", "") + &uuid::Uuid::new_v4().to_string().replace("-", ""))), // 64 chars
+            api_key: Set(Some(
+                uuid::Uuid::new_v4().to_string().replace("-", "")
+                    + &uuid::Uuid::new_v4().to_string().replace("-", ""),
+            )), // 64 chars
             created_at: Set(chrono::Utc::now()),
             updated_at: Set(chrono::Utc::now()),
             deleted_at: Set(None),

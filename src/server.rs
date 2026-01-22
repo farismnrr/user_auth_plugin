@@ -292,7 +292,7 @@ pub async fn run_server() -> std::io::Result<()> {
             .service(
                 web::scope("/api")
                     .configure(UserModule::configure_module)
-                    .configure(TenantModule::configure_module)
+                    .configure(TenantModule::configure_module),
             )
             .wrap(PoweredByMiddleware)
             .wrap(RequestLoggerMiddleware)

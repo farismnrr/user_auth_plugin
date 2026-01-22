@@ -3,7 +3,9 @@ mod tests {
     use crate::domains::auth::usecases::auth_usecase::AuthUseCase;
     use crate::domains::common::errors::AppError;
     use crate::domains::common::utils::password;
-    use crate::domains::tenant::repositories::user_tenant_repository::{UserTenantInfo as TenantInfo, UserTenantRepositoryTrait};
+    use crate::domains::tenant::repositories::user_tenant_repository::{
+        UserTenantInfo as TenantInfo, UserTenantRepositoryTrait,
+    };
     use crate::domains::user::dtos::auth_dto::LoginRequest;
     use crate::domains::user::entities::user::Model as User;
     use crate::domains::user::entities::user_activity_log::Model as UserActivityLog;
@@ -51,7 +53,6 @@ mod tests {
         }
     }
 
-
     // Fake UserTenantRepository
     struct FakeUserTenantRepository {
         role_response: Mutex<Vec<String>>,
@@ -79,12 +80,24 @@ mod tests {
 
     #[async_trait]
     impl UserTenantRepositoryTrait for FakeUserTenantRepository {
-        async fn add_user_to_tenant(&self, user_id: Uuid, tenant_id: Uuid, role: String) -> Result<(), AppError> {
-            self.add_user_calls.lock().unwrap().push((user_id, tenant_id, role));
+        async fn add_user_to_tenant(
+            &self,
+            user_id: Uuid,
+            tenant_id: Uuid,
+            role: String,
+        ) -> Result<(), AppError> {
+            self.add_user_calls
+                .lock()
+                .unwrap()
+                .push((user_id, tenant_id, role));
             Ok(())
         }
 
-        async fn get_user_roles_in_tenant(&self, _: Uuid, _: Uuid) -> Result<Vec<String>, AppError> {
+        async fn get_user_roles_in_tenant(
+            &self,
+            _: Uuid,
+            _: Uuid,
+        ) -> Result<Vec<String>, AppError> {
             Ok(self.role_response.lock().unwrap().clone())
         }
 
@@ -553,8 +566,6 @@ mod tests {
         }
     }
 
-
-
     #[tokio::test]
     async fn test_register_success_multitenant_user_sso() {
         use crate::domains::common::utils::config::Config;
@@ -594,14 +605,14 @@ mod tests {
             crate::domains::tenant::repositories::user_tenant_repository::UserTenantInfo {
                 tenant_id: old_tenant_id,
                 role: "user".to_string(),
-            }
+            },
         ]);
-        
+
         // Setup session mock for login (register logs user in)
         mock_session_repo
             .expect_create_session()
             .returning(|_, _, _, _, _, _| {
-                 Ok(UserSession {
+                Ok(UserSession {
                     id: Uuid::new_v4(),
                     user_id: Uuid::new_v4(),
                     refresh_token_hash: "hash".to_string(),
@@ -617,8 +628,14 @@ mod tests {
             .expect_log_activity()
             .returning(|_, _, _, _, _, _| {
                 Ok(UserActivityLog {
-                     id: Uuid::new_v4(), user_id: None, activity_type: "".to_string(), status: "".to_string(), 
-                     error_message: None, ip_address: None, user_agent: None, created_at: Utc::now().into()
+                    id: Uuid::new_v4(),
+                    user_id: None,
+                    activity_type: "".to_string(),
+                    status: "".to_string(),
+                    error_message: None,
+                    ip_address: None,
+                    user_agent: None,
+                    created_at: Utc::now().into(),
                 })
             });
 
@@ -637,20 +654,21 @@ mod tests {
             password: password.to_string(),
             tenant_id: new_tenant_id,
             role: "user".to_string(),
-            state: None, nonce: None, redirect_uri: None, invitation_code: None,
+            state: None,
+            nonce: None,
+            redirect_uri: None,
+            invitation_code: None,
         };
         let http_req = TestRequest::default().to_http_request();
 
         assert!(usecase.register(req, &http_req).await.is_ok());
-        
+
         // Verification: Check if add_user calls were recorded
         let calls = mock_tenant_repo.add_user_calls.lock().unwrap();
         assert!(!calls.is_empty());
         assert_eq!(calls[0].0, user_id);
         assert_eq!(calls[0].1, new_tenant_id);
     }
-
-
 
     #[tokio::test]
     async fn test_register_fail_multitenant_wrong_password() {
@@ -663,7 +681,7 @@ mod tests {
         let mock_session_repo = MockUserSessionRepository::new();
         let mut mock_activity_repo = MockUserActivityLogRepository::new();
         let mock_invite_repo = MockInvitationCodeRepository::new();
-        
+
         let user_id = Uuid::new_v4();
         let email = "user@example.com";
         let password = "password123";
@@ -684,12 +702,12 @@ mod tests {
             .expect_find_by_email_with_deleted()
             .returning(move |_| Ok(Some(user_clone.clone())));
 
-         // Existing role is "user" (so role check passes)
+        // Existing role is "user" (so role check passes)
         mock_tenant_repo.set_all_tenants_response(vec![
             crate::domains::tenant::repositories::user_tenant_repository::UserTenantInfo {
                 tenant_id: Uuid::new_v4(),
                 role: "user".to_string(),
-            }
+            },
         ]);
 
         // Log failure
@@ -697,8 +715,14 @@ mod tests {
             .expect_log_activity()
             .returning(|_, _, _, _, _, _| {
                 Ok(UserActivityLog {
-                     id: Uuid::new_v4(), user_id: None, activity_type: "".to_string(), status: "".to_string(), 
-                     error_message: None, ip_address: None, user_agent: None, created_at: Utc::now().into()
+                    id: Uuid::new_v4(),
+                    user_id: None,
+                    activity_type: "".to_string(),
+                    status: "".to_string(),
+                    error_message: None,
+                    ip_address: None,
+                    user_agent: None,
+                    created_at: Utc::now().into(),
                 })
             });
 
@@ -717,7 +741,10 @@ mod tests {
             password: "WRONG_PASSWORD".to_string(),
             tenant_id: Uuid::new_v4(),
             role: "user".to_string(),
-            state: None, nonce: None, redirect_uri: None, invitation_code: None,
+            state: None,
+            nonce: None,
+            redirect_uri: None,
+            invitation_code: None,
         };
         let http_req = TestRequest::default().to_http_request();
 
@@ -802,14 +829,13 @@ mod tests {
         let http_req = TestRequest::default().to_http_request();
 
         let result = usecase.login(req, &http_req).await;
-        
+
         assert!(result.is_err());
         match result.unwrap_err() {
             AppError::NotFound(msg) => assert_eq!(msg, "User not found"),
             _ => panic!("Expected NotFound error"),
         }
     }
-
 
     #[tokio::test]
     async fn test_register_multi_tenant_different_roles_success() {
@@ -851,12 +877,12 @@ mod tests {
             crate::domains::tenant::repositories::user_tenant_repository::UserTenantInfo {
                 tenant_id: old_tenant_id,
                 role: "user".to_string(),
-            }
+            },
         ]);
-        
+
         // Not in NEW tenant yet
         // mock_tenant_repo.get_user_role_in_tenant defaults to None if not set
-        
+
         // Invitation code is valid for admin
         mock_invite_repo
             .expect_validate_and_delete_code()
@@ -866,7 +892,7 @@ mod tests {
         mock_session_repo
             .expect_create_session()
             .returning(|_, _, _, _, _, _| {
-                 Ok(UserSession {
+                Ok(UserSession {
                     id: Uuid::new_v4(),
                     user_id: Uuid::new_v4(),
                     refresh_token_hash: "hash".to_string(),
@@ -881,8 +907,14 @@ mod tests {
             .expect_log_activity()
             .returning(|_, _, _, _, _, _| {
                 Ok(UserActivityLog {
-                     id: Uuid::new_v4(), user_id: None, activity_type: "".to_string(), status: "".to_string(), 
-                     error_message: None, ip_address: None, user_agent: None, created_at: Utc::now().into()
+                    id: Uuid::new_v4(),
+                    user_id: None,
+                    activity_type: "".to_string(),
+                    status: "".to_string(),
+                    error_message: None,
+                    ip_address: None,
+                    user_agent: None,
+                    created_at: Utc::now().into(),
                 })
             });
 
@@ -901,14 +933,16 @@ mod tests {
             password: password.to_string(), // CORRECT password
             tenant_id: new_tenant_id,
             role: "admin".to_string(), // NEW role in NEW tenant
-            state: None, nonce: None, redirect_uri: None, 
+            state: None,
+            nonce: None,
+            redirect_uri: None,
             invitation_code: Some(invitation_code.to_string()),
         };
         let http_req = TestRequest::default().to_http_request();
 
         let result = usecase.register(req, &http_req).await;
         assert!(result.is_ok());
-        
+
         // Verify user was linked to new tenant
         let calls = mock_tenant_repo.add_user_calls.lock().unwrap();
         assert_eq!(calls.len(), 1);
@@ -952,8 +986,14 @@ mod tests {
             .expect_log_activity()
             .returning(|_, _, _, _, _, _| {
                 Ok(UserActivityLog {
-                     id: Uuid::new_v4(), user_id: None, activity_type: "".to_string(), status: "".to_string(), 
-                     error_message: None, ip_address: None, user_agent: None, created_at: Utc::now().into()
+                    id: Uuid::new_v4(),
+                    user_id: None,
+                    activity_type: "".to_string(),
+                    status: "".to_string(),
+                    error_message: None,
+                    ip_address: None,
+                    user_agent: None,
+                    created_at: Utc::now().into(),
                 })
             });
 
@@ -972,7 +1012,10 @@ mod tests {
             password: "wrong_password".to_string(), // WRONG password
             tenant_id: Uuid::new_v4(),
             role: "user".to_string(),
-            state: None, nonce: None, redirect_uri: None, invitation_code: None,
+            state: None,
+            nonce: None,
+            redirect_uri: None,
+            invitation_code: None,
         };
         let http_req = TestRequest::default().to_http_request();
 
@@ -1023,8 +1066,14 @@ mod tests {
             .expect_log_activity()
             .returning(|_, _, _, _, _, _| {
                 Ok(UserActivityLog {
-                     id: Uuid::new_v4(), user_id: None, activity_type: "".to_string(), status: "".to_string(), 
-                     error_message: None, ip_address: None, user_agent: None, created_at: Utc::now().into()
+                    id: Uuid::new_v4(),
+                    user_id: None,
+                    activity_type: "".to_string(),
+                    status: "".to_string(),
+                    error_message: None,
+                    ip_address: None,
+                    user_agent: None,
+                    created_at: Utc::now().into(),
                 })
             });
 
@@ -1043,7 +1092,10 @@ mod tests {
             password: password.to_string(),
             tenant_id,
             role: "user".to_string(),
-            state: None, nonce: None, redirect_uri: None, invitation_code: None,
+            state: None,
+            nonce: None,
+            redirect_uri: None,
+            invitation_code: None,
         };
         let http_req = TestRequest::default().to_http_request();
 
@@ -1088,26 +1140,29 @@ mod tests {
             .returning(move |_| Ok(Some(user_clone.clone())));
 
         // Restore mock
-        mock_user_repo
-            .expect_restore()
-            .returning(move |id, _| {
-                Ok(User {
-                    id,
-                    username: "deleted_user".to_string(),
-                    email: "deleted@example.com".to_string(),
-                    password_hash: "hash".to_string(),
-                    created_at: Utc::now().into(),
-                    updated_at: Utc::now().into(),
-                    deleted_at: None, // <--- RESTORED
-                })
-            });
+        mock_user_repo.expect_restore().returning(move |id, _| {
+            Ok(User {
+                id,
+                username: "deleted_user".to_string(),
+                email: "deleted@example.com".to_string(),
+                password_hash: "hash".to_string(),
+                created_at: Utc::now().into(),
+                updated_at: Utc::now().into(),
+                deleted_at: None, // <--- RESTORED
+            })
+        });
 
         mock_session_repo
             .expect_create_session()
             .returning(|_, _, _, _, _, _| {
-                 Ok(UserSession {
-                    id: Uuid::new_v4(), user_id: Uuid::new_v4(), refresh_token_hash: "hash".to_string(),
-                    user_agent: None, ip_address: None, expires_at: Utc::now().into(), created_at: Utc::now().into(),
+                Ok(UserSession {
+                    id: Uuid::new_v4(),
+                    user_id: Uuid::new_v4(),
+                    refresh_token_hash: "hash".to_string(),
+                    user_agent: None,
+                    ip_address: None,
+                    expires_at: Utc::now().into(),
+                    created_at: Utc::now().into(),
                 })
             });
 
@@ -1115,8 +1170,14 @@ mod tests {
             .expect_log_activity()
             .returning(|_, _, _, _, _, _| {
                 Ok(UserActivityLog {
-                     id: Uuid::new_v4(), user_id: None, activity_type: "".to_string(), status: "".to_string(), 
-                     error_message: None, ip_address: None, user_agent: None, created_at: Utc::now().into()
+                    id: Uuid::new_v4(),
+                    user_id: None,
+                    activity_type: "".to_string(),
+                    status: "".to_string(),
+                    error_message: None,
+                    ip_address: None,
+                    user_agent: None,
+                    created_at: Utc::now().into(),
                 })
             });
 
@@ -1135,13 +1196,16 @@ mod tests {
             password: password.to_string(),
             tenant_id,
             role: "user".to_string(),
-            state: None, nonce: None, redirect_uri: None, invitation_code: None,
+            state: None,
+            nonce: None,
+            redirect_uri: None,
+            invitation_code: None,
         };
         let http_req = TestRequest::default().to_http_request();
 
         let result = usecase.register(req, &http_req).await;
         assert!(result.is_ok());
-        
+
         let calls = mock_tenant_repo.add_user_calls.lock().unwrap();
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].0, user_id);
@@ -1188,8 +1252,14 @@ mod tests {
             .expect_log_activity()
             .returning(|_, _, _, _, _, _| {
                 Ok(UserActivityLog {
-                     id: Uuid::new_v4(), user_id: None, activity_type: "".to_string(), status: "".to_string(), 
-                     error_message: None, ip_address: None, user_agent: None, created_at: Utc::now().into()
+                    id: Uuid::new_v4(),
+                    user_id: None,
+                    activity_type: "".to_string(),
+                    status: "".to_string(),
+                    error_message: None,
+                    ip_address: None,
+                    user_agent: None,
+                    created_at: Utc::now().into(),
                 })
             });
 
@@ -1208,7 +1278,10 @@ mod tests {
             password: "password123".to_string(),
             tenant_id: Uuid::new_v4(),
             role: "user".to_string(),
-            state: None, nonce: None, redirect_uri: None, invitation_code: None,
+            state: None,
+            nonce: None,
+            redirect_uri: None,
+            invitation_code: None,
         };
         let http_req = TestRequest::default().to_http_request();
 
@@ -1259,8 +1332,14 @@ mod tests {
             .expect_log_activity()
             .returning(|_, _, _, _, _, _| {
                 Ok(UserActivityLog {
-                     id: Uuid::new_v4(), user_id: None, activity_type: "".to_string(), status: "".to_string(), 
-                     error_message: None, ip_address: None, user_agent: None, created_at: Utc::now().into()
+                    id: Uuid::new_v4(),
+                    user_id: None,
+                    activity_type: "".to_string(),
+                    status: "".to_string(),
+                    error_message: None,
+                    ip_address: None,
+                    user_agent: None,
+                    created_at: Utc::now().into(),
                 })
             });
 
@@ -1286,13 +1365,16 @@ mod tests {
             password: password.to_string(),
             tenant_id,
             role: "admin".to_string(),
-            state: None, nonce: None, redirect_uri: None, invitation_code: Some("valid_code".to_string()),
+            state: None,
+            nonce: None,
+            redirect_uri: None,
+            invitation_code: Some("valid_code".to_string()),
         };
         let http_req = TestRequest::default().to_http_request();
 
         let result = usecase.register(req, &http_req).await;
         assert!(result.is_ok());
-        
+
         // Assert that add_user_to_tenant was called for the NEW role
         let calls = mock_tenant_repo.add_user_calls.lock().unwrap();
         assert_eq!(calls.len(), 1);
@@ -1338,8 +1420,13 @@ mod tests {
             .expect_create_session()
             .returning(|_, _, _, _, _, _| {
                 Ok(UserSession {
-                    id: Uuid::new_v4(), user_id: Uuid::new_v4(), refresh_token_hash: "hash".to_string(),
-                    user_agent: None, ip_address: None, expires_at: Utc::now().into(), created_at: Utc::now().into(),
+                    id: Uuid::new_v4(),
+                    user_id: Uuid::new_v4(),
+                    refresh_token_hash: "hash".to_string(),
+                    user_agent: None,
+                    ip_address: None,
+                    expires_at: Utc::now().into(),
+                    created_at: Utc::now().into(),
                 })
             });
 
@@ -1347,8 +1434,14 @@ mod tests {
             .expect_log_activity()
             .returning(|_, _, _, _, _, _| {
                 Ok(UserActivityLog {
-                     id: Uuid::new_v4(), user_id: None, activity_type: "".to_string(), status: "".to_string(), 
-                     error_message: None, ip_address: None, user_agent: None, created_at: Utc::now().into()
+                    id: Uuid::new_v4(),
+                    user_id: None,
+                    activity_type: "".to_string(),
+                    status: "".to_string(),
+                    error_message: None,
+                    ip_address: None,
+                    user_agent: None,
+                    created_at: Utc::now().into(),
                 })
             });
 
@@ -1367,7 +1460,9 @@ mod tests {
             password: password.to_string(),
             tenant_id,
             role: Some("admin".to_string()),
-            redirect_uri: None, state: None, nonce: None,
+            redirect_uri: None,
+            state: None,
+            nonce: None,
         };
         let http_req = TestRequest::default().to_http_request();
         let result = usecase.login(req_admin, &http_req).await;
@@ -1379,18 +1474,22 @@ mod tests {
             password: password.to_string(),
             tenant_id,
             role: None,
-            redirect_uri: None, state: None, nonce: None,
+            redirect_uri: None,
+            state: None,
+            nonce: None,
         };
         let result = usecase.login(req_default, &http_req).await;
         assert!(result.is_ok());
-        
+
         // CASE 3: Request non-existent role - should fail with 404
         let req_wrong = LoginRequest {
             email_or_username: email.to_string(),
             password: password.to_string(),
             tenant_id,
             role: Some("manager".to_string()),
-            redirect_uri: None, state: None, nonce: None,
+            redirect_uri: None,
+            state: None,
+            nonce: None,
         };
         let result = usecase.login(req_wrong, &http_req).await;
         assert!(result.is_err());
@@ -1400,4 +1499,3 @@ mod tests {
         }
     }
 }
-
