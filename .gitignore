@@ -14,3 +14,4 @@ snapshot.json
 *.sql
 *.db
 *.log
+.env.*
