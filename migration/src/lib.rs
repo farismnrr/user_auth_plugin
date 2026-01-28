@@ -1,5 +1,6 @@
 pub use sea_orm_migration::prelude::*;
 
+mod mqtt;
 mod tenants;
 mod users;
 
@@ -19,6 +20,8 @@ impl MigratorTrait for Migrator {
             Box::new(tenants::M20250111CreateUserTenantsJunction),
             Box::new(tenants::M20250116AddApiKeyToTenants),
             Box::new(tenants::M20250118RelaxUserTenantsUniqueConstraint),
+            // MQTT domain migrations
+            Box::new(mqtt::M20240523000001CreateMqttUsersTable),
         ]
     }
 }

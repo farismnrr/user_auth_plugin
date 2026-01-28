@@ -10,10 +10,12 @@ use std::io::Write;
 use std::sync::OnceLock;
 
 use crate::domains::auth::auth_module::AuthModule;
+use crate::domains::mqtt::mqtt_module::MqttModule;
 use crate::domains::tenant::tenant_module::TenantModule;
 use crate::domains::user::user_module::UserModule;
 
 // Repositories
+use crate::domains::mqtt::repositories::mqtt_repository::MqttRepository;
 use crate::domains::tenant::repositories::tenant_repository::TenantRepository;
 use crate::domains::tenant::repositories::user_tenant_repository::UserTenantRepository;
 use crate::domains::user::repositories::user_activity_log_repository::UserActivityLogRepository;
@@ -23,6 +25,7 @@ use crate::domains::user::repositories::user_session_repository::UserSessionRepo
 
 // UseCases
 use crate::domains::auth::usecases::auth_usecase::AuthUseCase;
+use crate::domains::mqtt::usecases::mqtt_usecase::MqttUseCase;
 use crate::domains::tenant::usecases::tenant_usecase::TenantUseCase;
 use crate::domains::user::usecases::user_details_usecase::UserDetailsUseCase;
 use crate::domains::user::usecases::user_usecase::UserUseCase;
@@ -228,6 +231,7 @@ pub async fn run_server() -> std::io::Result<()> {
     let user_activity_log_repo = Arc::new(UserActivityLogRepository::new(db_arc.clone()));
     let user_tenant_repo = Arc::new(UserTenantRepository::new(db_arc.clone(), cache.clone()));
     let tenant_repo = Arc::new(TenantRepository::new(db_arc.clone(), cache.clone()));
+    let mqtt_repo = Arc::new(MqttRepository::new(db_arc.clone(), cache.clone()));
 
     use crate::domains::auth::repositories::invitation_code_repository::InvitationCodeRepository;
     let invitation_code_repo = Arc::new(InvitationCodeRepository::new(cache.clone()));
@@ -250,6 +254,7 @@ pub async fn run_server() -> std::io::Result<()> {
     ));
     let user_details_usecase = Arc::new(UserDetailsUseCase::new(user_details_repo.clone()));
     let tenant_usecase = Arc::new(TenantUseCase::new(tenant_repo.clone()));
+    let mqtt_usecase = Arc::new(MqttUseCase::new(mqtt_repo.clone()));
 
     // Prepare variables for the factory closure
     let db_for_factory = db.clone();
@@ -260,6 +265,7 @@ pub async fn run_server() -> std::io::Result<()> {
     let auth_usecase_for_factory = auth_usecase.clone();
     let user_details_usecase_for_factory = user_details_usecase.clone();
     let tenant_usecase_for_factory = tenant_usecase.clone();
+    let mqtt_usecase_for_factory = mqtt_usecase.clone();
 
     let server = HttpServer::new(move || {
         let mut cors = actix_cors::Cors::default()
@@ -286,9 +292,11 @@ pub async fn run_server() -> std::io::Result<()> {
             .app_data(web::Data::new(auth_usecase_for_factory.clone()))
             .app_data(web::Data::new(user_details_usecase_for_factory.clone()))
             .app_data(web::Data::new(tenant_usecase_for_factory.clone()))
+            .app_data(web::Data::new(mqtt_usecase_for_factory.clone()))
             .app_data(web::Data::from(allowed_origins_for_factory.clone()))
             // Register Modules
             .configure(AuthModule::configure_module)
+            .configure(MqttModule::configure_module)
             .service(
                 web::scope("/api")
                     .configure(UserModule::configure_module)

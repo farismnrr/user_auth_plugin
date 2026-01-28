@@ -1,0 +1,3 @@
+pub use m20240523_000001_create_mqtt_users_table::M20240523000001CreateMqttUsersTable;
+
+mod m20240523_000001_create_mqtt_users_table;

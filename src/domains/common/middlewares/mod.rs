@@ -1,3 +1,4 @@
+pub mod api_key_middleware;
 pub mod powered_by_middleware;
 #[cfg(test)]
 mod powered_by_middleware_test;
